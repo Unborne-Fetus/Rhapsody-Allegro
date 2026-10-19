@@ -36,7 +36,7 @@ func pause_rect() -> Rect2:
 func auto_rect() -> Rect2:
 	return Rect2(16,12,120,80)
 func heading(g: Node2D,title: String,sub: String = "") -> void:
-	g.text_at("R / A · THUMB CONTROLS · 0.8.0",Vector2(32,40),19,g.TEAL)
+	g.text_at("R / A · THUMB CONTROLS · 0.8.2",Vector2(32,40),19,g.TEAL)
 	g.wrapped_text(title,Vector2(32,94),size().x-64,32,g.PAPER)
 	if not sub.is_empty(): g.wrapped_text(sub,Vector2(32,132),size().x-64,21,g.MUTED)
 func button(g: Node2D,label: String,rect: Rect2,action: String,primary: bool = false) -> void:
@@ -59,7 +59,7 @@ func draw_character(g: Node2D,index: int,rect: Rect2) -> void:
 	var x = rect.position.x+24; var y = rect.position.y+40
 	g.text_at(c.name+" / "+g.Arsenal.SETS[index].name,Vector2(x,y),29,Color(g.Arsenal.SETS[index].color))
 	g.text_at("%d HP · %s" % [c.health,c.ability],Vector2(x,y+40),23,g.TEAL)
-	g.StageArt.draw(g,Vector2(rect.end.x-75,rect.position.y+190),12+index,170)
+	g.StageArt.portrait(g,Vector2(rect.end.x-75,rect.position.y+225),index)
 	g.wrapped_text(c.music,Vector2(x,y+63),rect.size.x-180,16,g.GOLD)
 	var next = g.wrapped_text(c.ability_text,Vector2(x,y+112),rect.size.x-180,20)
 	next = g.wrapped_text(c.passive,Vector2(x,next+8),rect.size.x-180,19,g.TEAL)
@@ -120,12 +120,12 @@ func draw_menu(g: Node2D) -> void:
 			button(g,"CONFIRM: "+selected.name,Rect2(32 if portrait else 714,895 if portrait else 515,656 if portrait else 510,88),"upgrade_"+selected.id,true)
 		"settings":
 			heading(g,"PHONE SETTINGS","Saved automatically. Character choices stay locked in a run.")
-			actions(g,[["AUTO ATTACK: "+("ON" if g.profile.data.auto_attack else "OFF"),"phone_auto"],["BOSS MUSIC: "+("ON" if g.profile.data.music else "OFF"),"music"],["VOLUME: %d%%" % int(g.profile.data.volume*100),"volume"],["ASSIST: "+("ON" if g.profile.data.assist else "OFF"),"assist"],["SHAKE: "+("ON" if g.profile.data.shake else "OFF"),"shake"],["IMPACT FLASHES: "+("ON" if g.profile.data.flashes else "REDUCED"),"flashes"],["FULL SCREEN","phone_fullscreen"],["BACK","back"]],250 if portrait else 220)
+			actions(g,[["ECO RENDERER: "+("ON" if g.profile.data.eco_mode else "OFF"),"eco_mode"],["AUTO ATTACK: "+("ON" if g.profile.data.auto_attack else "OFF"),"phone_auto"],["BOSS MUSIC: "+("ON" if g.profile.data.music else "OFF"),"music"],["VOLUME: %d%%" % int(g.profile.data.volume*100),"volume"],["ASSIST: "+("ON" if g.profile.data.assist else "OFF"),"assist"],["SHAKE: "+("ON" if g.profile.data.shake else "OFF"),"shake"],["IMPACT FLASHES: "+("ON" if g.profile.data.flashes else "REDUCED"),"flashes"],["FULL SCREEN","phone_fullscreen"],["BACK","back"]],220 if portrait else 180)
 		"help":
 			heading(g,"TWO-THUMB GUIDE")
 			var rect = Rect2(32,180,656,890) if portrait else Rect2(56,180,1168,350)
 			g.draw_style_box(g.panel_style(Color("14212c"),g.TEAL),rect)
-			var instructions = "LEFT: drag anywhere in the left control area to move. Slide up to jump in platform view; slide down to drop through.\n\nRIGHT: tap DODGE or ABILITY. Slide between buttons without lifting. Hold ABILITY to repeat. BREAK spends full resonance.\n\nAUTO ATTACK: basic strikes trigger when the boss is in reach. Horizon fires automatically at range while saving dodge energy. Turn AUTO off for a manual STRIKE button.\n\nGold warnings are safe. Active floor attacks need movement or dodging; dodge through incoming bullets."
+			var instructions = "LEFT: drag anywhere in the left control area to move. Slide up to jump in platform view; slide down to drop through.\n\nRIGHT: tap DODGE or ABILITY. Slide between buttons without lifting. Hold ABILITY to repeat. BREAK spends full resonance.\n\nAUTO ATTACK: basic strikes trigger when the boss is in reach. the Singer fires automatically at range while saving dodge energy. Turn AUTO off for a manual STRIKE button.\n\nGold warnings are safe. Active floor attacks need movement or dodging; dodge through incoming bullets."
 			var y = rect.position.y+38
 			for paragraph in instructions.split("\n\n"):
 				y = g.wrapped_text(paragraph,Vector2(rect.position.x+24,y),rect.size.x-48,23,g.MUTED)+16
@@ -190,7 +190,7 @@ func draw_controls(g: Node2D) -> void:
 		var text_width = g.font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,fontsize).x
 		g.text_at(label,item[0]+Vector2(-text_width/2,8),fontsize,color if ready else g.MUTED)
 		if action == "burst": g.draw_arc(item[0],item[3]-8,-PI/2,-PI/2+TAU*g.resonance/100,48,g.GOLD,4,true)
-	g.text_at("0.8.0",Vector2(24,canvas_size.y-22),15,g.MUTED)
+	g.text_at("0.8.2",Vector2(24,canvas_size.y-22),15,g.MUTED)
 	var face = Rect2(24,22,104,52)
 	g.draw_style_box(g.panel_style(Color("20332e") if g.profile.data.auto_attack else Color("202b37"),g.TEAL if g.profile.data.auto_attack else g.MUTED),face)
 	g.text_at("AUTO "+("ON" if g.profile.data.auto_attack else "OFF"),face.position+Vector2(9,33),18,g.TEAL if g.profile.data.auto_attack else g.MUTED)
