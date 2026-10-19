@@ -28,7 +28,7 @@ func _initialize() -> void: call_deferred("run_tests")
 func run_tests() -> void:
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game); game.set_process(false); game.sound.enabled = false
-	game.profile.path = "user://input-test-profile.json"; game.profile.data.checkpoint = {}
+	game.profile.path = "user://input-test-profile.json"; game.profile.data.checkpoint = {}; game.profile.data.tutorial_complete = true
 	print("INPUT_VIEWPORT size=",root.size," transform=",root.get_final_transform())
 	await settle()
 	check(game.buttons.size()>=5,"Title controls render")
@@ -38,11 +38,12 @@ func run_tests() -> void:
 	check(game.screen == "playing" and not game.practice and not game.training,"Mouse begins full performance")
 	await key(KEY_J)
 	game.simulate(0.016)
-	check(not game.shots.is_empty(),"Keyboard firing through Input dispatcher")
+	check(game.shoot_cd>0 and game.shots.is_empty(),"Keyboard activates melee character ability")
 	await key(KEY_J,false)
 	var old_set = game.weapon_index
 	await tap_key(KEY_Q)
-	check(game.weapon_index == (old_set+1)%game.Arsenal.SETS.size(),"Q switches weapons")
+	check(game.weapon_index == old_set and game.screen == "arsenal","Q inspects locked character")
+	await tap_key(KEY_ESCAPE)
 	await tap_key(KEY_ESCAPE)
 	check(game.screen == "paused","Escape pauses")
 	await tap_key(KEY_H)
@@ -84,6 +85,19 @@ func run_tests() -> void:
 	check(game.screen == "loadout","Letterboxed portrait touch opens new run")
 	await touch(0,Vector2(640,611),true); await touch(0,Vector2(640,611),false)
 	check(game.screen == "playing" and not game.training,"Letterboxed portrait touch begins combat")
+	game.command("menu"); game.profile.data.tutorial_complete = false; await settle()
+	await tap_key(KEY_ENTER)
+	check(game.tutorial_active and game.tutorial.step == 0,"First-visit primary action starts tutorial")
+	game.command("menu"); game.screen = "intermission"; game.upgrade_options = [game.RunState.UPGRADES[7],game.RunState.UPGRADES[3],game.RunState.UPGRADES[4]]
+	await settle(); await tap_key(KEY_DOWN); await tap_key(KEY_DOWN)
+	check(game.upgrade_focus == 1 and game.screen == "intermission","Keyboard focus updates mechanic panel")
+	var motion = InputEventMouseMotion.new(); motion.position = root.get_final_transform()*Vector2(300,260); motion.relative = Vector2(10,10)
+	Input.parse_input_event(motion); await settle()
+	check(game.upgrade_focus == 0,"Hover changes reference to resonance")
+	await touch(3,Vector2(300,510),true); await touch(3,Vector2(300,510),false)
+	check(game.upgrade_focus == 2 and game.screen == "intermission","Touch card body inspects without accepting")
+	await touch(4,Vector2(620,530),true); await touch(4,Vector2(620,530),false)
+	check(game.screen == "playing" and game.run.has("fire"),"Explicit choose button accepts inspected upgrade")
 	DirAccess.remove_absolute(game.profile.path)
 	game.queue_free()
 	print("INPUT_TESTS checks=",checks," failures=",failures)

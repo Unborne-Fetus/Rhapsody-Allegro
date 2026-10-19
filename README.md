@@ -1,58 +1,49 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.3** adds four complete melee/ranged sets with distinct reach, timing, impact and damage to the full-run foundation.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.4** addresses gameplay feedback with a playable tutorial, more demanding bosses, four locked characters and contextual upgrade explanations.
 
-**[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The game is a real single-threaded Godot WebAssembly export, sharing its simulation with the Windows build.
+**[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
-## What you can play
+## Gameplay
 
-- **Three distinct bosses, nine boss/difficulty combinations.** The Metronome has clockwork volleys, charges and shockwaves; Glass Cantor controls space with prism beams, crystal rain and mines; The Conductor combines sweeps, spirals and crossfire. Each has a different silhouette and movement.
-- **Three combat phases per fight.** At 67% and 33% health, the arena shifts between top-down movement and side-scrolling with gravity, jumping and one-way platforms. Transitions clear bullets/hazards and grant protection.
-- **Four complete weapon sets.** Breaker pairs a slow hammer with a close-range concussion cannon; Flurry pairs very fast twin knives with a short-range repeater; Cadence pairs a balanced saber with a mid-range pulse carbine; Horizon pairs a light spear with a low-damage long-range marksman rifle. Both attack buttons change with the set. See the table below or the in-game Arsenal.
-- **Attack commitment and switching.** Each melee combo has its own windup, recovery, reach, arc and damage. Heavy windups can be dodge-cancelled, retaining recovery. A queued attack keeps its original stats when switching sets; switching resets the combo and preserves cooldowns. Holding K or left mouse repeats strikes, making the fast set usable without button mashing.
-- **Parry, perfect dodge, resonance, stagger, style.** Reflect bullets for increased damage; narrowly dodge danger to gain resonance; spend a full meter on a clearing burst. Build stagger to interrupt the boss and open a two-second +30% damage window. Vary actions to grow style and score.
-- **A full three-movement performance.** Choose Allegro, Virtuoso or Maestro; defeat a boss; pick one of three augmentations; continue with your build. Eight possible augmentations include blade/ranged damage, vitality/energy capacity, dodge efficiency, parry timing, healing-on-blade-hit and resonance gain.
-- **Saved checkpoints and records.** Continue at the start of the current movement with your upgrades and totals. Boss personal bests are separated by difficulty and assist use. Retrying a cleared fight rolls back its contribution to prevent duplicate score.
-- **Training arena.** Invulnerable player and immortal dummy, fast resonance regeneration, optional boss attacks, manual perspective switching, no unlocks or records. Try all four sets with range guides, total damage, hit count, last-hit damage and a rolling five-second DPS readout. G toggles range guides and R resets statistics; touch has equivalent RANGE/RESET buttons.
-- **A complete first-test interface.** Title, difficulty selection, boss select, augmentation interlude, combat guide, pause/retry, results, saved settings, reduced impact flashes, sound volume, screen shake and assist mode.
-- **Keyboard/mouse, keyboard-only, controller and multitouch.** Controller menus support D-pad navigation. The game pauses on focus loss and clears virtual input to prevent stuck touches.
+- **Eight tutorial lessons:** movement, melee, character ability, perfect dodge, parry, resonance, platform jumping and a rehearsal boss. Progress requires completing each objective. Death retries the lesson; campaign saves and records are preserved.
+- **Four characters:** choose before the run. Each owns a set, ability, passive and drawback. Character choice stays locked through fights, retries and intermissions.
+- **Only Horizon fires player bullets.** The other three characters have melee abilities and absorb parried projectiles. Lyra can reflect them.
+- **Harder bosses:** more health, faster pressure, pursuit, close-range sweeps, anti-kiting mines and later-phase chains. Every attack retains a warning. Stagger openings are shorter and cannot permanently lock a boss.
+- **Contextual upgrade panels:** hover, focus or tap a card to read its core mechanics, including resonance, stagger and energy. Use CHOOSE to commit.
+- **Three-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
+- **Training:** immortal dummy, optional attacks, manual perspective changes, range guides and damage / DPS readouts. Select a character before entering.
+- **Keyboard, mouse, controller and multitouch:** aspect-preserving scaling, portrait letterboxing, focus-loss pause, configurable volume, shake, flashes and assist mode.
 
-Art is original vector prototype art with animated boss silhouettes and a player character. Effects are original synthesized sounds. Music integration, final character art, story and a larger campaign remain open for feedback. The optional metronome is a practice aid; combat never requires matching a beat.
+## Characters
 
-## Weapon sets
+| Character / set | Ability | Passive | Drawback |
+|---|---|---|---|
+| Bram / Breaker | Heavy area slam | 20% damage reduction; 150 HP | Slow movement and dodge recovery |
+| Vex / Flurry | Knife lunge | Up to three bleeding stacks | 80 HP; +15% incoming damage |
+| Aria / Cadence | Saber sweep with parry window | Parry empowers next strike by 50% | Normal strikes build 20% less stagger |
+| Lyra / Horizon | Long-range marksman shot | +25% shot damage beyond 400 units | 75 HP; +20% incoming damage |
 
-| Set | Melee weapon | Shot damage / interval | Shot reach | Style |
-|---|---|---|---|---|
-| Breaker | Hammer | 80 / 0.90s | 260 | Slow, close, heavy damage |
-| Flurry | Twin knives | 8 / 0.11s | 220 | Very fast, close, low damage |
-| Cadence | Saber | 24 / 0.38s | 480 | Moderate speed, mid range, strong damage |
-| Horizon | Light spear | 12 / 0.44s | 950 | Moderate speed, long range, lower damage |
-
-Reach uses logical arena units. Projectiles stop at their range limit; they cannot travel indefinitely. The long-range request is implemented as lower damage with moderate firing speed. Breaker and Flurry require getting close; Cadence is the default balanced set. All four are unlocked immediately. Choose a preferred starting set in the Arsenal or difficulty screen, and cycle complete sets with Q in combat.
-
-Melee energy, resonance, stagger and healing rewards scale with the set's impact so rapid hits cannot create disproportionate resources. These are initial tuning values for playtesting, not final balance.
+Bram is slow and close with high impact; Vex is extremely fast and close with light hits; Aria has balanced mid-range saber attacks; Lyra has long reach and modest shot damage / cadence. See [character tuning](docs/WEAPONS.md) for values. All are available immediately. Original vector prototype art and synthesized effects remain; final animation, music, story and campaign expansion are open for feedback.
 
 ## Controls
 
 | Action | Keyboard / mouse | Controller |
 |---|---|---|
 | Move | WASD / arrows | Left stick |
-| Melee / combo | Hold K / left mouse | X / Square |
-| Fire | Hold J / right mouse | RT / R2 or RB / R1 |
-| Switch complete set | Q | B / Circle |
+| Melee combo | Hold K / left mouse | X / Square |
+| Character ability | Hold J / right mouse | RT / R2 or RB / R1 |
+| Inspect locked character | Q | B / Circle |
 | Dodge | Space | A / Cross |
 | Parry | L | LB / L1 |
-| Resonance break | E, full meter | Y / Triangle |
-| Jump in side view | W / Up | D-pad Up or flick left stick up |
-| Drop through a platform | S / Down | Left stick down |
-| Pause | Escape / P / pause icon | Start |
-| Combat guide | H | Pause menu |
+| Resonance break | E at full meter | Y / Triangle |
+| Jump / drop through | W / Up; S / Down | D-pad Up / stick up; stick down |
+| Pause / guide | Escape / P; H | Start; pause menu |
+| Menu focus / choose | Up / Down / Tab; Enter | D-pad; A / Cross |
+| Training attacks / view / guides / reset | T / V / G / R | Pause options |
 | Fullscreen | F | — |
-| Menu selection | Up / Down / Tab, Enter | D-pad, A / Cross |
-| Training attacks | T | — |
-| Training perspective | V | — |
 
-Mouse attacks aim at the pointer. Keyboard-only, touch and controller attacks aim at the boss. Landscape is recommended for touch. Training also has ATK and VIEW touch buttons, plus controller-accessible pause options. Left side is a floating movement stick; labeled action buttons appear on the right, including weapon switching. In side view, the virtual stick can point down to drop through platforms.
+Mouse attacks aim at the pointer. Keyboard-only, controller and touch aim at the boss. Touch uses a floating left stick and labeled right-side actions; landscape is recommended. Upgrade card bodies inspect, while their buttons choose. Combat never requires matching the optional practice pulse.
 
 ## Build and develop
 
@@ -77,33 +68,14 @@ Open `http://localhost:8060`. Hosted play needs no development tools. Local Godo
 
 The web packager preserves the actual engine bytes, splits them into assets below static-host limits, uses content-addressed filenames, and adds a branded loader with download progress. `dist/build-info.json` records engine and game hashes. `build/web/` retains the standard Godot export; `build/windows/` contains the desktop executable.
 
-## Verification and automation
+## Verification
 
-- **Combat tests:** base combat rules, all boss patterns, perspective shifts, protection, parry/burst, assist, save recovery and six minutes of stress simulation.
-- **Advanced tests:** weapons, augmentation options, corrupted checkpoints, stagger, perfect-dodge gating, hazards, platform collision, coyote jumping, retry score rollback, campaign progression, training isolation, assist-record classification and **18 additional minutes** across all boss/difficulty combinations.
-- **Input integration:** 22 checks dispatch keyboard, mouse and multitouch events through Godot, including portrait letterboxing, menu transitions, firing, pause/guide return paths, two-finger controls and mobile training toggles.
-- **Weapon regression:** 97 checks cover all four sets, windups, committed aim, reach, endpoint-clamped collision, switching/cancellation, resource scaling, preferences/checkpoints, upgrades and training statistics.
-- **Native presentation:** `tests/presentation_test.gd` captures title, difficulty, training, all bosses, side view, touch, interlude, settings and guide using a real OpenGL renderer.
-- **Hosted package test:** engine assembly must be byte-identical valid WebAssembly with correct MIME, size limits, asset fallthrough and readable missing-file failures.
-- **Browser CI:** `tests/browser.cjs` boots the exported build in Chromium and exercises starting a run, movement, firing, dodge, weapon switching, pause/resume and the guide, with screenshots.
+The headless combat, progression, input and character/tutorial suites cover gameplay rules and 24 simulated minutes across every boss/difficulty. Native OpenGL captures verify the tutorial, character roster and upgrade references. Both release exports and the WebAssembly package are checked locally. A browser smoke test is included in CI; browser end-to-end testing is unavailable in this environment, so no successful browser playtest is claimed.
 
-The GitHub Actions workflow exports both builds and uploads them and browser screenshots. The initial hosted runner failed before any build steps started, so no successful browser playtest is claimed. Local combat/advanced/input/weapon tests, real native rendering, and both exports have been verified. Browser/device-specific input, audio and performance still need first-player feedback.
+GitHub Actions builds Web and Windows artifacts and runs the browser smoke test. Optional GitHub Pages hosting uses `ENABLE_GITHUB_PAGES=true`; the private play link above is independent of Pages.
 
-Optional GitHub Pages: enable Pages with GitHub Actions as source and set `ENABLE_GITHUB_PAGES=true`. Availability for a private repo depends on the GitHub plan. The private play link above is independent of Pages.
+## Source
 
-## Source map
+`scripts/game.gd` owns encounter flow and interface. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
 
-| File | Responsibility |
-|---|---|
-| `scripts/game.gd` | Scene flow, player actions, encounter sequencing and interface |
-| `scripts/weapons.gd` | Four complete set definitions and selection validation |
-| `scripts/run_state.gd` | Difficulty/weapon/upgrade tuning, run totals and checkpoint validation |
-| `scripts/hazard.gd` | Telegraph/active/lifetime/collision rules for area attacks |
-| `scripts/hazard_view.gd` | Clipped hazard rendering that preserves HUD readability |
-| `scripts/projectile.gd` | Projectile simulation and swept collision |
-| `scripts/profile.gd` | Validated local saves, unlocks, difficulty and assist-separated records |
-| `scripts/sound.gd` | Bounded voice pool of synthesized sound effects |
-| `data/bosses.json` | Boss identity, health, timing and attack sequence |
-| `docs/FOUNDATION.md` | Design and implementation notes |
-
-No third-party art or recordings are bundled. Godot's exported engine and default font retain their upstream licenses. No license for the original game source is granted yet.
+See [foundation notes](docs/FOUNDATION.md). No third-party art or recordings are bundled. Godot's engine and default font retain upstream licenses. No license for original game source has been granted yet.

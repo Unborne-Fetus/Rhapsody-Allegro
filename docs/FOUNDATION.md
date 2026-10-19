@@ -1,53 +1,27 @@
-# Foundation, version 0.3
+# Foundation, version 0.4
 
-Rhapsody: Allegro is a zero-budget Godot action boss rush with hybrid melee/ranged combat and top-down/side-scrolling changes. This foundation expands gameplay while leaving story, setting, final art and soundtrack decisions open. Music integration is deferred; no commercial recordings or rhythm-gated combat are added.
+Rhapsody: Allegro uses one Godot simulation for browser and desktop. The prototype combines action boss fights with top-down / side-scrolling transitions. Combat has no required beat timing. Final art, story and soundtrack remain open for feedback.
 
-## Run structure
+## Gameplay revision
 
-Title → difficulty selection → boss → results → choose augmentation → next boss. Three bosses complete a performance. The current movement checkpoint stores difficulty, accumulated totals, assist classification, upgrades, a stable selection seed, and the equipped weapon set. Checkpoints occur at the start of a movement; they do not restore the exact middle of an attack.
+Four characters replace in-fight set switching. Each has a locked weapon, ability, passive and drawback; see WEAPONS.md for values. The character selection guard also applies to pause, retries, intermissions and nested menus. Only Lyra / Horizon creates friendly projectiles, including reflected shots. Other parries absorb hostile bullets.
 
-A failed fight can be retried freely. Replaying after a clear first restores the run totals from that fight's beginning, so repeat clears cannot inflate a run score. Completing the final movement clears the checkpoint. Boss practice is separate from run progression; the training arena awards no unlocks or records and cannot kill either participant.
+The eight-step tutorial advances on real movement, landed attacks, defensive events, platform collision and a rehearsal boss clear. Early target lessons are immortal. Practice shots are slow, incoming tutorial damage is halved and death retries the current lesson. Tutorial completion is a profile flag; normal records, unlocks and campaign checkpoints are preserved.
 
-Upgrade offerings are stable for a run/checkpoint and sampled from eight unowned augmentations. No duplicate choices or already-owned choices appear. New performances can offer different builds. Augmentations apply only to that run.
+Boss health is now 1500 / 2100 / 2800, with shorter recovery and faster patterns. Bosses pursue distant players, punish close approaches with telegraphed circular sweeps and target mines at distant players. Later phases add separately warned follow-up attacks. Ordinary movement freezes during windup to preserve aim readability. Stagger lasts 1.25 seconds, grants +30% damage and has a seven-second lock. Higher difficulties increase damage, speed and density.
 
-## Combat systems
+Gold hazard warnings never damage. Active beams, mines and expanding waves require movement, jumping or dodging; only projectiles can be parried. Hazard rendering is clipped to the arena. All fights retain three health phases, changing perspective at 67% and 33%, clearing attacks and granting protection. Platforms support buffered jumps, coyote time and dropping through by holding down.
 
-Default player speed is 310 units/second. Dodge costs 24 energy, grants 0.23 seconds of protection, moves for 0.17 seconds and recovers for 0.48 seconds. Quickstep changes cost/recovery to 18/0.36. Successful blade hits restore 13 energy; passive regeneration is 16/second.
+Augmentation cards show a side reference panel on mouse hover, keyboard/controller focus or touch inspection. The panel explains the primary mechanic and a related mechanic. All eight upgrades map to authored definitions; Resonant Core explains how resonance is earned, the 100-point threshold and the break's damage, protection and attack clearing. Inspection does not choose an upgrade; the explicit CHOOSE button does.
 
-Four complete sets now define both melee and ranged combat; see `WEAPONS.md` for the tuning table. Cadence is the balanced default. Range is enforced in projectile simulation by clamping each step to remaining travel, preserving swept collision only along that clamped segment.
+## Run and save integrity
 
-Melee attacks capture a set-specific windup, recovery, direction, combo step, reach, arc, damage and rewards at activation. Damage resolves after windup against the current target position. Set swapping preserves pending attacks and both cooldowns while resetting combo progression. Dodge cancels a pending windup without refunding recovery. The fast set has no hit stop; heavier sets have more pronounced impact. Melee can be held on keyboard, mouse or touch; menu clicks are latched until release so starting/resuming a game does not accidentally attack.
+Title → character / difficulty → boss → results → augmentation → next boss. Checkpoints store character, upgrades, difficulty, assist classification, seed and totals at the beginning of a movement. Retries roll back that movement's contribution. Final campaign completion clears its checkpoint. Training cannot kill participants or create records.
 
-Reward scaling keeps fast attack counts from multiplying healing, energy, resonance and stagger disproportionately. Lifeline restores 5% of the captured base strike damage. Ranged resonance, style and stagger rewards scale with hit damage; rapid low-damage projectiles cannot multiply meter simply through hit count.
+Profiles remain version 1 with defaults for new fields. Save writes use a temporary file and rename. Corrupt JSON recovers safely; malformed checkpoint values and duplicate or unknown upgrades are sanitized. Older weapon choices map to characters and missing choices default to Aria. Assist records remain separately classified even if assist is later turned off.
 
-Parry lasts 0.2 seconds (0.28 with Golden Window), reflects a bullet for 28 damage, and grants energy/resonance/stagger. Perfect dodges grant resonance once per dash. Burst spends 100 resonance for 135 damage, clears hostile shots and area attacks, and protects for 0.7 seconds.
+## Validation
 
-Blade hits, reflected bullets and ranged hits build stagger. A full meter interrupts windup/charge and opens a two-second +30% damage window, with a five-second lock before another stagger. Style rewards changing action type more than repeating one action, decays over time and drops when hit. Style affects score, not damage.
+Headless suites cover combat, all characters, projectile exclusivity, abilities, passives, selection locks, tutorial objectives and completion isolation, reference data and dispatched keyboard/mouse/multitouch input. Stress simulations cover every boss/difficulty with bounded objects and finite physics for 24 simulated minutes. Native OpenGL captures cover tutorial, characters, reference panels and the existing screens.
 
-## Encounters and fairness
-
-All bosses have three health phases, shifting at 67% and 33%. Shifts remove projectiles/hazards, reposition both sides and give two seconds of protection. Distinct motion and attack sequences define the bosses. Virtuoso/Maestro increase attack speed, damage and fan density; they preserve telegraphs and the same control language.
-
-Area hazards are separate simulation objects. Beam lanes, mines and expanding waves cannot damage during their warning stage. Lifetimes and object budgets are bounded. Rendering occurs within a clipped Control layer, preventing large attack shapes from covering the HUD. Gold outlines signal warnings; boss-colored attacks are active. Area attacks require movement, jumping or dodging; only projectiles can be reflected.
-
-Side view has three one-way platforms, buffered jumps and a short coyote-time grace. Descending players land on platforms; holding down skips them. The floor remains safe from falls. The arena retains one logical 1280×720 coordinate system with aspect-preserving scaling across browser/native builds.
-
-## Save integrity
-
-Profiles remain version 1 for backwards compatibility with the original prototype; additional fields have defaults. Writes use a temporary file followed by rename. Corrupt JSON falls back safely. Unknown/duplicate augmentation IDs are removed when restoring a checkpoint. The current assist toggle is stored separately from whether a run has ever used assist. Difficulty and assist records are separated, and turning assist off after benefiting from it cannot relabel that fight as standard.
-
-## Rendering and verification
-
-Original vector figures provide a player silhouette, a clockwork sentinel, a crystalline singer, and a conductor with marionette strings. These remain prototype art. Real native OpenGL captures are part of presentation verification. Impact flashes and screen shake can be reduced independently.
-
-Regression coverage spans 258 checks across base combat, new mechanics, run transitions and dispatched keyboard/mouse/multitouch events, plus 24 minutes of combined simulation, with object bounds checked across nine boss/difficulty combinations. The web packager's content-addressed chunk loader is tested for byte identity, valid WebAssembly, MIME, host asset limits, normal resource fallthrough and failed chunk handling.
-
-A real exported-browser smoke test is included for CI. The GitHub-hosted runner has failed before starting its job, so browser end-to-end verification remains a known gap. Safari, physical controller variations, multitouch ergonomics and low-power mobile performance still need human playtesting.
-
-## Next design work
-
-First-player feedback should drive camera scale, movement feel, damage/readability, usefulness of platforms, and weapon balance. After those settle, split bespoke boss logic into separate encounter scenes, add final character animation and hand-authored arenas, and decide how music belongs in the game. Retain one Godot simulation for browser and desktop.
-
-## Weapon iteration and training
-
-The Arsenal compares four sets side by side, with melee combo damage, shot damage/cadence and both ranges. Profiles remember the chosen starting set; checkpoints capture the current set at the start of the saved movement. Older checkpoints default to Cadence. Training exposes range circles and clipped swing effects, total/hit/last-hit counters and a rolling five-second DPS average. Resetting those statistics does not restart the fight.
+Web and Windows release exports share the tested source. The hosted package test checks byte-identical valid WebAssembly assembly, MIME, host size limits, asset fallthrough and failed-chunk handling. A Chromium smoke test is maintained for CI. Browser end-to-end testing was unavailable in this development environment, so physical browser/device input, audio and performance remain for player testing.

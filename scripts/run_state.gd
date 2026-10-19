@@ -1,6 +1,7 @@
 extends RefCounted
 ## Run progression and tuning, independent of scene/input/rendering.
 const Arsenal = preload("res://scripts/weapons.gd")
+const Characters = preload("res://scripts/characters.gd")
 const WEAPONS = Arsenal.SETS
 const DIFFICULTIES := [
 	{"name":"ALLEGRO","description":"The intended first playthrough","damage":1.0,"speed":1.0,"interval":1.0,"density":0},
@@ -9,10 +10,10 @@ const DIFFICULTIES := [
 ]
 const UPGRADES := [
 	{"id":"edge","name":"TEMPERED EDGE","line1":"Blade damage +20%","line2":"Dash strikes hit harder too.","icon":"blade"},
-	{"id":"cell","name":"DEEP CAPACITOR","line1":"Maximum energy +25","line2":"Longer volleys before closing in.","icon":"cell"},
-	{"id":"step","name":"QUICKSTEP","line1":"Dodge cost 18 · cooldown 0.36s","line2":"More movement, less downtime.","icon":"step"},
-	{"id":"guard","name":"GOLDEN WINDOW","line1":"Parry window +0.08 seconds","line2":"Reflections build boss stagger.","icon":"guard"},
-	{"id":"fire","name":"OVERTONE","line1":"Ranged damage +20%","line2":"Applies to all four sets.","icon":"fire"},
+	{"id":"cell","name":"DEEP CAPACITOR","line1":"Maximum energy +25","line2":"A larger reserve for skills and dodges.","icon":"cell"},
+	{"id":"step","name":"QUICKSTEP","line1":"Dodge cost and recovery -25%","line2":"More movement, less downtime.","icon":"step"},
+	{"id":"guard","name":"GOLDEN WINDOW","line1":"Parry window +0.08 seconds","line2":"Parries build resonance and stagger.","icon":"guard"},
+	{"id":"fire","name":"OVERTONE","line1":"Character ability damage +20%","line2":"Boosts your character-specific skill.","icon":"fire"},
 	{"id":"heart","name":"SECOND WIND","line1":"Maximum vitality +25","line2":"Restore health before the next fight.","icon":"heart"},
 	{"id":"siphon","name":"LIFELINE","line1":"Blade hits heal 5% of base damage","line2":"Sustain yourself at close range.","icon":"heart"},
 	{"id":"echo","name":"RESONANT CORE","line1":"Resonance gain +35%","line2":"Reach the next break sooner.","icon":"echo"}
@@ -33,13 +34,13 @@ func has(id: String) -> bool:
 	return id in upgrades
 func stat(name: String) -> float:
 	match name:
-		"health": return 125.0 if has("heart") else 100.0
+		"health": return float(Characters.ROSTER[loadout_index].health)+(25.0 if has("heart") else 0.0)
 		"energy": return 125.0 if has("cell") else 100.0
 		"melee": return 1.2 if has("edge") else 1.0
 		"ranged": return 1.2 if has("fire") else 1.0
-		"dodge_cost": return 18.0 if has("step") else 24.0
-		"dodge_cd": return 0.36 if has("step") else 0.48
-		"parry": return 0.28 if has("guard") else 0.2
+		"dodge_cost": return float(Characters.ROSTER[loadout_index].dodge_cost)*(0.75 if has("step") else 1.0)
+		"dodge_cd": return float(Characters.ROSTER[loadout_index].dodge_cd)*(0.75 if has("step") else 1.0)
+		"parry": return float(Characters.ROSTER[loadout_index].parry)+(0.08 if has("guard") else 0.0)
 		"resonance": return 1.35 if has("echo") else 1.0
 	return 1.0
 func choices(boss_index: int) -> Array:

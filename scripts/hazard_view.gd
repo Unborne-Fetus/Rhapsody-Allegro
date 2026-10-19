@@ -18,10 +18,10 @@ func _draw() -> void:
 				draw_line(hazard.origin,hazard.target,Color(c,alpha),hazard.width*2 if active else 2,true)
 				if active: draw_line(hazard.origin,hazard.target,Color("f2ebda",0.6),3,true)
 			"mine":
-				draw_circle(hazard.origin,55,Color(c,0.2 if active else 0.04))
-				draw_circle(hazard.origin,55,Color(c,alpha),false,3,true)
+				draw_circle(hazard.origin,hazard.area_radius,Color(c,0.2 if active else 0.04))
+				draw_circle(hazard.origin,hazard.area_radius,Color(c,alpha),false,3,true)
 				if not active:
-					draw_arc(hazard.origin,60,-PI/2,-PI/2+TAU*clampf(hazard.age/hazard.warning,0,1),32,Color("e8c575"),2,true)
+					draw_arc(hazard.origin,hazard.area_radius+5,-PI/2,-PI/2+TAU*clampf(hazard.age/hazard.warning,0,1),32,Color("e8c575"),2,true)
 					draw_string(game.font,hazard.origin+Vector2(-4,5),"!",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("e8c575"))
 			"wave":
 				var radius = hazard.radius if active else 56.0

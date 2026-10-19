@@ -34,12 +34,20 @@ func run_capture() -> void:
 	game.screen = "help"; await capture("guide")
 	game.screen = "arsenal"; await capture("arsenal")
 	for i in game.Arsenal.SETS.size():
-		game.command("training"); game.equip_set(i); game.banner_time = 0
+		game.command("menu"); game.equip_set(i,true); game.command("training"); game.banner_time = 0
 		game.player = Vector2(500,440); game.boss = Vector2(500+float(game.Arsenal.SETS[i].melee_range[0])-3,440)
 		game.gamepad = true; game.melee()
 		for frame in 80:
 			if game.melee_snapshot.is_empty(): break
 			game.simulate(0.005)
 		await capture("set-"+str(i))
+	game.command("menu"); game.start_tutorial()
+	for step in [0,3,6,7]:
+		game.tutorial.step = step; game.setup_tutorial_stage(); await capture("tutorial-"+str(step))
+	game.command("menu"); game.screen = "intermission"
+	game.upgrade_options = [game.RunState.UPGRADES[7],game.RunState.UPGRADES[3],game.RunState.UPGRADES[4]]
+	game.ui_mouse_active = false
+	for focus in 3:
+		game.menu_focus = focus; game.upgrade_focus = focus; await capture("mechanic-"+str(focus))
 	print("PRESENTATION_CAPTURE_COMPLETE")
 	quit()

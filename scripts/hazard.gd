@@ -6,6 +6,7 @@ var target: Vector2
 var warning: float
 var duration: float
 var age := 0.0
+var area_radius := 55.0
 var radius := 0.0
 var previous_radius := 0.0
 var width := 16.0
@@ -26,7 +27,7 @@ func intersects(p: Vector2,body_radius: float = 14) -> bool:
 	if not active() or hit: return false
 	match kind:
 		"beam": return Geometry2D.get_closest_point_to_segment(p,origin,target).distance_to(p)<width+body_radius
-		"mine": return origin.distance_to(p)<55+body_radius
+		"mine": return origin.distance_to(p)<area_radius+body_radius
 		"wave":
 			var distance = p.distance_to(origin)
 			return distance>=previous_radius-width-body_radius and distance<=radius+width+body_radius

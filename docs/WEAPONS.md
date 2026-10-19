@@ -1,22 +1,20 @@
-# Weapon sets, version 0.3
+# Characters and sets, version 0.4
 
-The user's four requested roles are implemented as complete melee/ranged pairs. The long-range role uses lower damage and moderate firing speed. All values below are base values before upgrades, stagger or assist; distances use the game's fixed logical arena units.
+Each character owns one set for a full performance, including retries and intermissions. Select before starting. Q / controller B pauses to inspect the character roster; it cannot change equipment. All four are unlocked. Existing profile/checkpoint weapon indices migrate directly to the matching character.
 
-| Set | Role | Melee damage (combo) | Melee recovery (seconds) | Melee reach | Shot damage | Shot interval | Shot reach |
-|---|---|---|---|---|---|---|---|
-| Breaker | Slow, close, heavy damage | 96 / 108 / 150 | 0.80 / 0.88 / 1.15 | 110 / 115 / 135 | 80 | 0.90s | 260 |
-| Flurry | Very fast, close, low damage | 11 / 12 / 18 | 0.105 / 0.105 / 0.17 | 88 / 94 / 106 | 8 | 0.11s | 220 |
-| Cadence | Balanced speed, mid range, strong damage | 34 / 38 / 60 | 0.30 / 0.32 / 0.48 | 150 / 160 / 175 | 24 | 0.38s | 480 |
-| Horizon | Moderate speed, long range, lower damage | 18 / 20 / 28 | 0.36 / 0.38 / 0.50 | 215 / 225 / 240 | 12 | 0.44s | 950 |
+| Character / set | Role | HP | Speed | Melee combo damage | Melee recovery | Ability damage / recovery / cost |
+|---|---|---|---|---|---|---|
+| Bram / Breaker | Slow close-range heavy | 150 | 245 | 96 / 108 / 150 | .80 / .88 / 1.15s | Faultline: 115 / 2.0s / 30 |
+| Vex / Flurry | Very fast close-range light | 80 | 375 | 11 / 12 / 18 | .105 / .105 / .17s | Razorstep: 32 / .9s / 22 |
+| Aria / Cadence | Balanced mid-range saber | 100 | 310 | 34 / 38 / 60 | .30 / .32 / .48s | Crescent Guard: 48 / 1.2s / 22 |
+| Lyra / Horizon | Moderate cadence, long-range light | 75 | 290 | 18 / 20 / 28 | .36 / .38 / .50s | Marksman Shot: 12 / .44s / 10 |
 
-Breaker has a hammer and concussion cannon, Flurry twin knives and a flechette repeater, Cadence a saber and pulse carbine, Horizon a light spear and marksman rifle. The spear's narrow thrust trades melee damage for reach. The hammer has a broader arc, a visible 0.22–0.32 second windup, and the largest impact. Flurry's 0.015–0.03 second windups and no hit stop support rapid attacks. Cadence sits between these extremes.
+Only Horizon fires player bullets or reflects hostile bullets. Other characters absorb parried projectiles. Bosses retain their projectile patterns.
 
-Recovery includes windup; it is the minimum time from one activation to the next. Damage happens at the end of windup, using the captured direction but the current player/target positions. Missing is possible if the target moves away. Holding melee repeats attacks when recovery finishes. Dodge can cancel the windup, at the cost of forfeiting the attack while keeping recovery.
+Bram slams in a 180-unit radius and takes 20% less damage. His movement and dodge recovery are slow. Vex lunges with knives; blade hits stack bleeding up to three times, dealing 3 damage per second per stack for three seconds. Further hits refresh the duration. Vex takes 15% extra damage and has low vitality. Aria sweeps within 200 units with a brief parry window. Successful parries empower the next strike by 50% for 1.5 seconds; ordinary saber attacks build 20% less stagger. Lyra shoots up to 950 units and earns 25% extra damage beyond 400 units. She has the lowest vitality and takes 20% extra damage.
 
-Shots have different size, speed and visual trails as well as finite range. Their centers cannot travel past the configured range from the player, including the 24-unit muzzle offset. Target hitboxes can contact a projectile near its endpoint; swept collision never extends beyond the clamped segment. Reflecting an enemy projectile does not impose a player weapon's range on it.
+Melee damage resolves after a committed windup against the target's current position. Holding the attack repeats combos when ready. Dodging cancels windup without refunding recovery. Energy, resonance and stagger rewards depend on impact; Lifeline heals 5% of captured direct strike damage. Overtone boosts each character's ability by 20%, including melee skills.
 
-Switching via Q, controller B or the touch WEAPON button changes both attacks. A switch does not shorten either cooldown. Pending attacks retain their originating set's stats and appearance, and combo progression resets so rapid first hits cannot be used to skip directly to a heavy finisher. Starting-set preferences persist independently from the set captured in a run checkpoint.
+The tutorial teaches movement, three landed strikes, character ability, perfect dodge, parry, resonance, platform jumping and a 480-HP rehearsal sentinel. Objectives require actual gameplay events. Death restarts the current lesson. Completion is saved without creating boss records, unlocks or overwriting a campaign checkpoint.
 
-Energy return, resonance and stagger per melee hit are tuned around hit impact and cadence. Lifeline healing is 5% of base strike damage, avoiding a flat heal per hit that would disproportionately favor the fast set. These values are deliberately easy to tune in `scripts/weapons.gd` after the first playtest.
-
-Training has a five-second average DPS readout, last hit, total damage and hit count. The first few hits are still divided by five, so the readout is intentionally conservative before five seconds of sustained attacking. G toggles range guides; R clears the readout. Touch has RANGE and RESET buttons.
+Training retains damage totals, hit count, last impact, five-second average DPS and range guides. Choose another character from the title before starting another training session. G toggles guides and R resets statistics; touch has equivalent buttons.

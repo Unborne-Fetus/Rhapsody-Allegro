@@ -1,4 +1,5 @@
 extends SceneTree
+## Character, tutorial, boss-pressure and contextual-reference regressions.
 var checks := 0
 var failures := 0
 var game: Node2D
@@ -7,97 +8,130 @@ func check(condition: bool,message: String) -> void:
 	if not condition: failures += 1; push_error(message)
 func _initialize() -> void: call_deferred("run_tests")
 func prepare(index: int,distance: float = 60) -> void:
-	game.run.reset(); game.training = true; game.training_attacks = false; game.practice = true
-	game.equip_set(index); game.start_fight(0)
-	game.player = Vector2(400,400); game.boss = Vector2(400+distance,400)
-	game.gamepad = true; game.used_touch = false
+	game.command("menu"); game.screen = "loadout"; game.run.reset()
+	game.equip_set(index); game.training = true; game.training_attacks = false; game.practice = true
+	game.start_fight(0); game.player = Vector2(400,400); game.boss = Vector2(400+distance,400)
+	game.gamepad = true; game.used_touch = false; game.profile.data.assist = false
 func finish_strike() -> void:
 	var frames = 0
 	while not game.melee_snapshot.is_empty() and frames<200:
 		game.simulate(0.005); frames += 1
-	check(frames<200,"Queued strike always resolves")
+	check(frames<200,"Committed strike resolves")
+func next_lesson() -> void:
+	game.update_tutorial(0.71)
 func run_tests() -> void:
 	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game); game.set_process(false); game.sound.enabled = false
 	game.profile.path = "user://weapon-test-profile.json"
 	var sets = game.Arsenal.SETS
-	check(sets.size() == 4,"Exactly four complete sets")
-	check(sets[0].damage>sets[2].damage and sets[2].damage>sets[1].damage,"Heavy and balanced shot damage ordering")
-	check(sets[0].melee_damage[0]>sets[2].melee_damage[0] and sets[2].melee_damage[0]>sets[1].melee_damage[0],"Melee roles match damage ordering")
-	check(sets[1].cooldown<sets[2].cooldown and sets[2].cooldown<sets[0].cooldown,"Very-fast, balanced, heavy cadence ordering")
-	check(sets[0].range<sets[2].range and sets[1].range<sets[2].range and sets[2].range<sets[3].range,"Close, mid and long reach ordering")
-	check(sets[3].damage<sets[2].damage and sets[3].cooldown>sets[1].cooldown and sets[3].cooldown<sets[0].cooldown,"Long range trades damage for reach with moderate cadence")
-	for i in sets.size():
-		var weapon: Dictionary = sets[i]
-		prepare(i,float(weapon.melee_range[0])-3)
-		game.melee()
-		check(game.training_damage == 0 and game.melee_windup>0,"Strike respects set windup")
-		var pending = game.melee_snapshot.duplicate(true)
-		game.melee()
-		check(game.melee_snapshot == pending,"Repeated input cannot bypass recovery")
-		finish_strike()
-		check(is_equal_approx(game.training_last_hit,float(weapon.melee_damage[0])),"Set strike applies its own damage")
-		check(game.training_hit_count == 1,"One damage application per strike")
-		check(game.energy<=game.run.stat("energy") and game.resonance<=100,"Strike rewards remain capped")
-		prepare(i,float(weapon.melee_range[0])+2)
-		game.melee(); finish_strike()
-		check(game.training_hit_count == 0,"Melee cannot hit beyond declared reach")
-		prepare(i,200)
-		game.shoot()
-		check(game.shots.size() == 1,"One projectile per fire activation")
-		var shot = game.shots[0]
-		check(shot.source_set == i and shot.tint == Color(weapon.color),"Projectile captures originating set and appearance")
-		check(is_equal_approx(shot.damage,float(weapon.damage)),"Projectile captures set damage")
-		var muzzle = shot.position
-		shot.step(10.0)
-		check(is_equal_approx(shot.distance_traveled,float(weapon.range)-24) and shot.life<=0,"Large delta cannot extend projectile range")
-		check(is_equal_approx(muzzle.distance_to(shot.position),float(weapon.range)-24),"Projectile endpoint clamps precisely")
-		var beyond = shot.position+shot.velocity.normalized()*(shot.radius+44)
-		check(not shot.intersects(beyond,43),"Swept collision does not extend beyond projectile endpoint")
+	check(sets.size() == 4 and game.Characters.ROSTER.size() == 4,"Four characters and assigned sets")
+	check(sets[0].melee_damage[0]>sets[2].melee_damage[0] and sets[2].melee_damage[0]>sets[1].melee_damage[0],"Heavy, balanced and fast damage roles")
+	check(sets[1].melee_cooldown[0]<sets[2].melee_cooldown[0] and sets[2].melee_cooldown[0]<sets[0].melee_cooldown[0],"Distinct attack cadence")
+	for i in 4:
+		var c: Dictionary = game.Characters.ROSTER[i]
 		prepare(i)
-		game.melee(); var recovery = game.melee_cd
-		game.cycle_weapon()
-		check(game.melee_cd == recovery and game.combo == 0,"Set swapping preserves recovery and resets combo")
-		check(game.melee_snapshot.id == weapon.id,"Set swapping preserves original queued attack")
-		finish_strike()
-		check(is_equal_approx(game.training_last_hit,float(weapon.melee_damage[0])),"Queued attack cannot inherit a new set's damage")
-	var gains: Array[float] = []
-	for index in [0,1]:
-		prepare(index); game.resonance = 0; game.shoot(); game.simulate(0.016)
-		gains.append(game.resonance-0.4)
-	check(gains[0]>gains[1],"Heavy ranged hit earns more meter than one light hit")
-	check(is_equal_approx(gains[0]/float(sets[0].damage),gains[1]/float(sets[1].damage)),"Ranged meter scales with impact rather than projectile count")
-	prepare(0)
-	game.melee(); var committed = game.melee_cd; game.dodge()
-	check(game.melee_snapshot.is_empty() and game.melee_cd == committed,"Dodge cancels windup without refunding recovery")
-	game.simulate(0.3)
-	check(game.training_hit_count == 0,"Cancelled heavy swing cannot damage later")
-	prepare(0)
-	game.melee(); game.melee_snapshot.facing = Vector2.LEFT; finish_strike()
-	check(game.training_hit_count == 0,"Directional melee cannot hit behind its committed aim")
-	prepare(1)
-	game.training = false; game.run.upgrades.append("siphon"); game.hp = 50
-	game.melee(); finish_strike()
-	check(is_equal_approx(game.hp,50+float(sets[1].melee_damage[0])*0.05),"Healing scales with damage, not attack count")
-	prepare(0)
-	game.run.upgrades.append("edge"); game.melee(); finish_strike()
-	check(is_equal_approx(game.training_last_hit,float(sets[0].melee_damage[0])*1.2),"Melee upgrade applies exactly once")
-	game.shoot_cd = 0; game.run.upgrades.append("fire"); game.shots.clear(); game.shoot()
-	check(is_equal_approx(game.shots[0].damage,float(sets[0].damage)*1.2),"Ranged upgrade applies to set damage")
-	game.equip_set(3,true)
+		check(game.hp == c.health and game.weapon_index == i,"Character vitality and set applied")
+		game.training = false; game.invincible = 0; game.hurt(10)
+		check(is_equal_approx(game.hp,c.health-10*c.incoming),"Character armor or vulnerability applied")
+		for state in ["playing","paused","intermission","dead","clear"]:
+			game.screen = state
+			check(not game.equip_set((i+1)%4) and game.weapon_index == i,"Character locked in "+state)
+		game.screen = "playing"; game.open_panel("arsenal"); game.open_panel("help")
+		check(not game.equip_set((i+1)%4),"Nested inspection cannot bypass character lock")
+		game.close_panel(); game.close_panel()
+		prepare(i); game.shoot()
+		check(game.energy == 100-c.cost and game.shoot_cd == c.cooldown,"Ability has character cost and recovery")
+		var before = game.energy; game.shoot()
+		check(game.energy == before,"Ability cannot bypass recovery")
+		if i<3:
+			check(game.shots.is_empty() and not game.melee_snapshot.is_empty(),"Melee ability creates no bullets")
+			finish_strike()
+			check(is_equal_approx(game.training_last_hit,c.power),"Melee ability damage")
+			if i == 1: check(game.bleed_stacks == 1,"Razorstep applies bleeding")
+			if i == 2: check(game.parry_time>0,"Crescent Guard grants parry window")
+		else:
+			check(game.shots.size() == 1 and game.shots[0].source_set == 3,"Only Horizon fires player bullets")
+			check(game.shots[0].damage == 12,"Horizon modest close-range damage")
+			var shot = game.shots[0]; shot.step(10)
+			check(is_equal_approx(shot.distance_traveled,926) and shot.life<=0,"Projectile cannot exceed declared range")
+		prepare(i); game.parry(); var shot = game.Shot.new(game.player,Vector2.ZERO,false); game.shots.append(shot); game.simulate(0.005)
+		check(shot.friendly == (i == 3),"Only Horizon reflects bullets")
+		check(game.parries == 1,"Each character can parry")
+		if i == 2:
+			game.melee(); check(is_equal_approx(game.melee_snapshot.power,sets[i].melee_damage[0]*1.5),"Aria riposte empowers next strike")
+			check(game.riposte_time == 0,"Riposte consumed once")
+		prepare(i); game.energy = 0; game.shoot()
+		check(game.melee_snapshot.is_empty() and game.shots.is_empty(),"Insufficient energy rejects ability")
+		prepare(i); game.run.upgrades.append("fire"); game.shoot()
+		check(is_equal_approx(game.shots[0].damage,c.power*1.2) if i == 3 else is_equal_approx(game.melee_snapshot.power,c.power*1.2),"Overtone boosts correct ability")
+	prepare(3,500); game.shoot(); check(game.shots[0].damage == 15,"Lyra Long Sight bonus")
+	prepare(1); game.bleed_stacks = 3; game.bleed_time = 3; game.update_bleed(0.5)
+	check(game.training_last_hit == 4.5,"Three bleeding stacks tick damage")
+	game.update_bleed(3.1); game.update_bleed(0.01); check(game.bleed_stacks == 0,"Bleeding expires")
+	prepare(0); game.melee(); var recovery = game.melee_cd; game.dodge()
+	check(game.melee_snapshot.is_empty() and game.melee_cd == recovery,"Dodge cancels windup without refund")
+	prepare(2); game.melee(); game.melee_snapshot.facing = Vector2.LEFT; finish_strike()
+	check(game.training_hit_count == 0,"Melee respects committed direction")
+	prepare(0); game.cycle_weapon()
+	check(game.weapon_index == 0 and game.screen == "arsenal","Inspection pauses without swapping")
+	game.command("menu"); game.equip_set(1,true)
 	var saved = game.Profile.new(); saved.path = game.profile.path; saved.load_profile()
-	check(saved.data.weapon == 3,"Preferred set persists in profile")
-	var restored = game.RunState.new(); check(restored.restore(game.run.snapshot(1,false)) and restored.loadout_index == 3,"Checkpoint preserves active set")
-	check(restored.restore({"boss":1}) and restored.loadout_index == game.Arsenal.DEFAULT,"Older checkpoints default to balanced set")
-	check(restored.restore({"boss":1,"weapon":{}}) and restored.loadout_index == game.Arsenal.DEFAULT,"Malformed set choice recovers safely")
-	prepare(2); game.damage_boss(50); game.damage_boss(25)
-	check(game.training_damage == 75 and game.training_hit_count == 2 and game.training_last_hit == 25,"Training damage totals and hit readout")
-	check(game.training_dps() == 15,"Training readout uses explicit five-second average")
-	game.elapsed += 6; game.simulate(0.005)
-	check(game.training_dps() == 0,"Training DPS window expires old damage")
-	game.reset_training_readout()
-	check(game.training_damage == 0 and game.training_hit_count == 0,"Training readout resets independently")
-	DirAccess.remove_absolute(game.profile.path)
-	game.queue_free()
-	print("WEAPON_TESTS checks=",checks," failures=",failures)
+	check(saved.data.weapon == 1,"Character preference persists")
+	var restored = game.RunState.new()
+	check(restored.restore(game.run.snapshot(1,false)) and restored.loadout_index == 1,"Checkpoint preserves character")
+	check(restored.restore({"boss":1,"weapon":{}}) and restored.loadout_index == 2,"Old or malformed selection recovers")
+	# Tutorial cannot advance merely by waiting or invoking a different objective.
+	var lesson = game.Tutorial.new(); lesson.event("victory"); lesson.tick(500)
+	check(lesson.step == 0 and lesson.progress == 0,"Tutorial gates ignore time and wrong events")
+	var records = game.profile.data.best.duplicate(true)
+	var unlocked = game.profile.data.unlocked
+	game.profile.data.checkpoint = {"boss":1,"weapon":1}
+	game.command("menu"); game.start_tutorial()
+	check(game.tutorial_active and game.practice and not game.training,"Playable tutorial starts separately")
+	check(not game.equip_set(3),"Tutorial character also locked")
+	game.player = Vector2(950,510); game.update_tutorial(0.01); next_lesson()
+	check(game.tutorial.step == 1,"Movement reaches checkpoint")
+	game.gamepad = true; game.player = Vector2(700,420)
+	for i in 3:
+		game.melee_cd = 0; game.melee(); finish_strike()
+	next_lesson(); check(game.tutorial.step == 2,"Three landed melee hits advance lesson")
+	game.player = Vector2(700,420); game.shoot(); finish_strike(); next_lesson()
+	check(game.tutorial.step == 3,"Actual character ability advances lesson")
+	game.update_tutorial(1.3)
+	check(game.shots.size() == 1 and not game.shots[0].friendly,"Dodge lesson supplies safe practice shot")
+	game.shots.clear(); game.dodge(); game.shots.append(game.Shot.new(game.player,Vector2.ZERO,false)); game.simulate(0.005); next_lesson()
+	check(game.tutorial.step == 4,"Real projectile dodge advances lesson")
+	game.parry(); game.shots.append(game.Shot.new(game.player,Vector2.ZERO,false)); game.simulate(0.005); next_lesson()
+	check(game.tutorial.step == 5 and game.resonance == 100,"Parry lesson advances to charged resonance")
+	game.burst(); next_lesson(); check(game.tutorial.step == 6 and game.side,"Resonance lesson introduces side view")
+	game.player = Vector2(380,420); game.velocity = Vector2(0,250)
+	for i in 30: game.simulate(1.0/60)
+	next_lesson(); check(game.tutorial.step == 7,"Landing on first platform completes objective")
+	game.invincible = 0; game.hurt(9999)
+	check(game.tutorial.step == 7 and game.hp == game.run.stat("health") and game.boss_hp == 480,"Death retries current tutorial checkpoint")
+	game.damage_boss(9999); next_lesson()
+	check(game.screen == "tutorial_clear" and game.profile.data.tutorial_complete,"Tutorial ends and saves completion")
+	check(game.profile.data.best == records and game.profile.data.unlocked == unlocked,"Tutorial creates no normal records or unlocks")
+	check(game.profile.data.checkpoint.boss == 1,"Tutorial preserves existing campaign checkpoint")
+	# Context panel metadata and inspection are independent from accepting upgrades.
+	game.screen = "intermission"; game.upgrade_options = game.RunState.UPGRADES.slice(0,3)
+	game.inspect_upgrade_at(Vector2(300,370))
+	check(game.upgrade_focus == 1 and game.screen == "intermission" and game.run.upgrades.is_empty(),"Hover inspection never accepts upgrade")
+	for u in game.RunState.UPGRADES:
+		check(game.Mechanics.TOPICS.has(u.id),"Upgrade has contextual topics")
+		for topic in game.Mechanics.TOPICS[u.id]: check(game.Mechanics.ENTRIES.has(topic),"Reference topic exists")
+	# Bosses approach ranged players and telegraph close punishment / later-phase chains.
+	prepare(2); game.training = false; game.player = Vector2(200,400); game.boss = Vector2(1000,400)
+	var distance = game.player.distance_to(game.boss); game.update_boss(0.5)
+	check(game.player.distance_to(game.boss)<distance-80,"Boss closes distance against kiting")
+	game.boss = game.player+Vector2(70,0); game.attack_number = 1; game.attack_timer = 0; game.update_boss(0.01)
+	check(game.pending_pattern == "cleave" and game.windup>0,"Close range sweep has warning")
+	game.hazards.clear(); game.execute_pattern("cleave")
+	check(game.hazards[0].area_radius == 125 and not game.hazards[0].intersects(game.boss),"Large cleave begins harmlessly telegraphed")
+	game.phase = 1; game.attack_number = 2; game.chain_active = false; game.windup = 0.01; game.pending_pattern = "fan"; game.update_boss(0.02)
+	check(game.followup_delay>0,"Later phases schedule chained attacks")
+	game.update_boss(0.5); check(game.windup>0 and game.chain_active,"Follow-up has its own warning")
+	for b in game.bosses: check(b.hp>=1500 and b.interval<=0.9,"Boss durability and pressure increased")
+	DirAccess.remove_absolute(game.profile.path); game.queue_free()
+	print("CHARACTER_TUTORIAL_TESTS checks=",checks," failures=",failures)
 	quit(1 if failures else 0)
