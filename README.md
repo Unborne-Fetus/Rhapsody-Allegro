@@ -1,6 +1,6 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.1 — Pixel Performers.** Twelve bosses retain their painted artwork, while the four playable musicians now have original pixel-art animation atlases with individually keyed walking, idle, jumping, attack and hurt poses. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.2 — Potato Mode.** Twelve bosses retain their painted artwork, while the four playable musicians now have original pixel-art animation atlases with individually keyed walking, idle, jumping, attack and hurt poses. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
 
 **[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
@@ -14,6 +14,14 @@ A Godot action boss rush that changes between top-down and side-scrolling combat
 - **Twelve-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
 - **Training:** immortal dummy, optional attacks, manual perspective changes, range guides and damage / DPS readouts. Select a character before entering.
 - **Keyboard, mouse, controller and multitouch:** aspect-preserving scaling, portrait letterboxing, focus-loss pause, configurable volume, shake, flashes and assist mode.
+
+## Low-end PC and phone performance
+
+**ECO RENDERER** is available in Settings on desktop and phones. It starts enabled on browser and mobile installations, and is optional on desktop. The preference saves with your normal local profile; turning it off restores full decorative detail.
+
+Eco mode refreshes the drawn scene at approximately 30 fps while gameplay input, projectiles, collisions and warning lifetimes use fixed 60 Hz simulation steps (subject to hardware performance). It reduces background geometry and curved-effect detail, caps cosmetic sparks at 80 rather than 300, and keeps stage danger zones, bullets, attack warnings, character animation frames and combat rules intact. The sound system reuses short audio samples instead of recalculating waveforms repeatedly. Menus reuse their drawing resources, and expired visual effects are removed without per-frame array-copy allocations. Both modes limit the game's maximum frame rate to 60 to avoid wasting resources on high-refresh screens.
+
+On very weak devices, reducing the browser window resolution, closing GPU-heavy tabs, or toggling screen shake and impact flashes off can help further. ECO does not change difficulty or score eligibility. No specific minimum hardware specification or measured FPS gain is claimed yet.
 
 ## Play with two thumbs
 
