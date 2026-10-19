@@ -154,6 +154,7 @@ var gamepad_previous: Dictionary = {}
 var settings_from := "title"
 var menu_history: Array[String] = []
 var rng := RandomNumberGenerator.new()
+var visual_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	# Keep CPU/GPU costs bounded on high-refresh browsers and inexpensive devices.
@@ -175,6 +176,7 @@ func _ready() -> void:
 	apply_volume()
 	print("RHAPSODY_BOOT_READY")
 	rng.seed = 91428
+	visual_rng.seed = 67311
 	phone_mode = DisplayServer.is_touchscreen_available() or OS.has_feature("android") or OS.has_feature("ios")
 	if OS.has_feature("web"):
 		phone_mode = bool(JavaScriptBridge.eval("navigator.maxTouchPoints > 0 && (matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent))"))
@@ -595,7 +597,7 @@ func emit_sparks(p: Vector2,color: Color,count: int) -> void:
 	var limit := 80 if profile.data.eco_mode else 300
 	var budget := mini((count+1)/2 if profile.data.eco_mode else count,limit-sparks.size())
 	for i in maxi(0,budget):
-		sparks.append({"p":p,"v":Vector2.RIGHT.rotated(rng.randf()*TAU)*rng.randf_range(40,270),"life":rng.randf_range(0.2,0.65),"color":color})
+		sparks.append({"p":p,"v":Vector2.RIGHT.rotated(visual_rng.randf()*TAU)*visual_rng.randf_range(40,270),"life":visual_rng.randf_range(0.2,0.65),"color":color})
 
 func _process(raw_delta: float) -> void:
 	if phone_mode and phone.portrait: update_phone_camera(minf(raw_delta,0.04))
