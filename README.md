@@ -1,6 +1,6 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.0 — The Living Score.** Painted artwork replaces the geometric figures for all twelve bosses and four playable musicians. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.1 — Pixel Performers.** Twelve bosses retain their painted artwork, while the four playable musicians now have original pixel-art animation atlases with individually keyed walking, idle, jumping, attack and hurt poses. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
 
 **[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
@@ -8,7 +8,7 @@ A Godot action boss rush that changes between top-down and side-scrolling combat
 
 - **Eight tutorial lessons:** movement, melee, character ability, perfect dodge, energy recovery, resonance, platform jumping and a rehearsal boss. Progress requires completing each objective. Death retries the lesson; campaign saves and records are preserved.
 - **Four characters:** choose before the run. Each owns a set, ability, passive and drawback. Character choice stays locked through fights, retries and intermissions.
-- **Only Horizon fires player bullets.** The other three characters have melee abilities. Parrying is deferred; its implementation remains in source.
+- **Only the Singer fires player sound-wave projectiles.** The other three musicians have melee abilities. Parrying is deferred; its implementation remains in source.
 - **Harder bosses:** more health, faster pressure, pursuit, close-range sweeps, anti-kiting mines and later-phase chains. Every attack retains a warning. Stagger openings are shorter and cannot permanently lock a boss.
 - **Contextual upgrade panels:** hover, focus or tap a card to read its core mechanics, including resonance, stagger and energy. Use CHOOSE to commit.
 - **Twelve-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
@@ -19,7 +19,7 @@ A Godot action boss rush that changes between top-down and side-scrolling combat
 
 Phones automatically get a dedicated interface in portrait or landscape. The left black rail in landscape is a floating movement stick; portrait controls stay below the arena. In side view, flick it upward to jump and downward to drop through platforms; a right-side JUMP button is also available. The right thumb can slide between large DODGE and ABILITY buttons without lifting. Holding ABILITY repeats it; BREAK spends full resonance.
 
-**AUTO starts enabled on phones.** Basic melee attacks trigger only when the boss is within reach. Horizon also fires automatically from range while preserving enough energy for a dodge. Abilities, dodges and breaks remain manual. Tap the small top-left AUTO control to disable it and expose a manual STRIKE button; the setting persists. Auto attack uses the same damage, windups, cooldowns, energy and collision rules as manual input.
+**AUTO starts enabled on phones.** Basic melee attacks trigger only when the boss is within reach. the Singer also fires automatically from range while preserving enough energy for a dodge. Abilities, dodges and breaks remain manual. Tap the small top-left AUTO control to disable it and expose a manual STRIKE button; the setting persists. Auto attack uses the same damage, windups, cooldowns, energy and collision rules as manual input.
 
 Portrait has large menu cards, a separate lower control area and a camera that frames both fighters. Landscape uses the full available canvas, with a central arena and black control rails on either side. Phone characters face the boss even while retreating, and phone strikes track the boss during windup. Rotating the phone pauses a fight, clears held input and rebuilds the layout and touch targets. Completion and pause menus are centered in the new orientation with opaque backgrounds. Upgrade cards use a large inspection list plus a separate confirmation button. The tutorial includes thumb-specific instructions. Safe-area padding keeps browser controls away from notches and home indicators, page gestures are disabled on the canvas, and supported browsers can keep the screen awake. Fullscreen is optional in Settings.
 
@@ -40,12 +40,12 @@ Each has three named phases, its own arena and silhouette, movement behavior, te
 
 | Character / set | Ability | Passive | Drawback |
 |---|---|---|---|
-| Bram / Breaker | Heavy area slam | 20% damage reduction; 150 HP | Slow movement and dodge recovery |
-| Vex / Flurry | Knife lunge | Up to three bleeding stacks | 80 HP; +15% incoming damage |
-| Aria / Cadence | Wide saber sweep | Finishers restore 8 extra energy | Normal strikes build 20% less stagger |
-| Lyra / Horizon | Long-range marksman shot | +25% shot damage beyond 400 units | 75 HP; +20% incoming damage |
+| Bram / Downbeat (Drummer) | Heavy drum shockwave | 20% damage reduction; 150 HP | Slow movement and dodge recovery |
+| Vex / Groove (Bassist) | Slap-bass lunge | Up to three lingering distortion stacks | 80 HP; +15% incoming damage |
+| Aria / Riff (Guitarist) | Wide power-chord sweep | Finishers restore 8 extra energy | Normal strikes build 20% less stagger |
+| Lyra / Voice (Singer) | Long-range sound-wave projectile | +25% damage beyond 400 units | 75 HP; +20% incoming damage |
 
-Bram is slow and close with high impact; Vex is extremely fast and close with light hits; Aria has balanced mid-range saber attacks; Lyra has long reach and modest shot damage / cadence. See [character tuning](docs/WEAPONS.md) for values. All are available immediately. Original vector prototype art and synthesized effects remain; final animation, music, story and campaign expansion are open for feedback.
+Bram is a hard-hitting drummer; Vex a rapid bassist; Aria a balanced guitarist; and Lyra a ranged singer. Their existing damage, movement, energy and difficulty tuning are preserved. See [character tuning](docs/WEAPONS.md) for values. All are available immediately. Each playable musician has a separate silhouette and 36 distinct sprite poses (144 total). The 40×56-pixel cells are animated based on actual combat state, not a painted PNG moved side to side. Bosses keep their existing painted atlas and original synthesized effects.
 
 ## Controls
 
@@ -99,7 +99,7 @@ GitHub Actions builds Web and Windows artifacts and runs the browser smoke test.
 
 ## Source
 
-`scripts/game.gd` owns encounter flow and interface. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `phone_ui.gd` draws the thumb interface; phone routing and camera integration use the shared game simulation. `song_bosses.gd` owns the custom encounter mechanics, attacks and vector figures; `encounters.gd` provides shared roster bounds. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
+`scripts/game.gd` owns encounter flow and interface. `assets/musicians.svg` contains crisp pixel-art pose cells; `scripts/pixel_performers.gd` selects frames and `scripts/stage_art.gd` continues to draw painted bosses. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `phone_ui.gd` draws the thumb interface; phone routing and camera integration use the shared game simulation. `song_bosses.gd` owns the custom encounter mechanics, attacks and vector figures; `encounters.gd` provides shared roster bounds. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
 
 See [foundation notes](docs/FOUNDATION.md). No third-party art or recordings are bundled. Godot's engine and default font retain upstream licenses. No license for original game source has been granted yet.
 

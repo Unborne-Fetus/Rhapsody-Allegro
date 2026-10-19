@@ -108,6 +108,8 @@ var dash_cd := 0.0
 var dash_dir := Vector2.RIGHT
 var melee_cd := 0.0
 var melee_flash := 0.0
+var attack_animation := 0.0
+var hurt_animation := 0.0
 var combo := 0
 var combo_time := 0.0
 var shoot_cd := 0.0
@@ -349,7 +351,7 @@ func start_fight(index: int) -> void:
 	stagger = 0; stagger_time = 0; stagger_lock = 0; style = 0; style_chain = 0
 	last_action = ""; fight_score = 0; parries = 0; perfect_dodges = 0
 	hit_stop = 0; ground_grace = 0; jump_buffer = 0; victory_accounted = false
-	dash_time = 0; dash_cd = 0; invincible = 1; melee_cd = 0; shoot_cd = 0
+	dash_time = 0; dash_cd = 0; invincible = 1; melee_cd = 0; shoot_cd = 0; attack_animation = 0; hurt_animation = 0
 	parry_cd = 0; parry_time = 0; charge_time = 0; windup = 0; phase = 0
 	riposte_time = 0; bleed_time = 0; bleed_stacks = 0; bleed_tick = 0.5; followup_delay = 0; followup_pattern = ""
 	combo = 0; combo_time = 0; attack_number = 0; elapsed = 0; hits = 0; attack_timer = 1.8
@@ -472,6 +474,7 @@ func melee() -> void:
 	melee_windup = float(weapon.windup[step])
 	active_melee = melee_snapshot.duplicate(true)
 	melee_flash = 0
+	attack_animation = 0.36
 	sound.tone(130+weapon_index*70,0.05,0.05)
 
 func shoot() -> void:
@@ -481,6 +484,7 @@ func shoot() -> void:
 	if energy<float(character.cost): return
 	energy -= float(character.cost)
 	shoot_cd = float(character.cooldown)
+	attack_animation = 0.36
 	var aim = player.direction_to(boss) if phone_mode or used_touch or gamepad or held(KEY_J) else player.direction_to(mouse_world())
 	facing = aim
 	if weapon_index != 3:
@@ -569,6 +573,7 @@ func hurt(amount: float) -> void:
 	hits += 1
 	style = maxf(0,style-40); style_chain = 0
 	invincible = 0.55
+	hurt_animation = 0.26
 	shake = 10
 	emit_sparks(player,CORAL,18)
 	sound.tone(75,0.18,0.25)
@@ -612,7 +617,7 @@ func simulate(delta: float) -> void:
 	songs.tick(delta)
 	if profile.data.assist: fight_assisted = true; run.assisted = true
 	elapsed += delta
-	for prop in ["invincible","dash_time","dash_cd","melee_cd","melee_flash","shoot_cd","parry_time","parry_cd","boss_flash","banner_time","combo_time"]:
+	for prop in ["invincible","dash_time","dash_cd","melee_cd","melee_flash","attack_animation","hurt_animation","shoot_cd","parry_time","parry_cd","boss_flash","banner_time","combo_time"]:
 		set(prop,maxf(0,float(get(prop))-delta))
 	if not melee_snapshot.is_empty():
 		melee_windup = maxf(0,melee_windup-delta)
@@ -921,7 +926,7 @@ func draw_menu() -> void:
 			wrapped_text(character.debuff,Vector2(x+18,541),240,13,CORAL)
 			if not character_locked(): button("SELECTED" if selected else "SELECT",Rect2(x+18,580,240,32),"set_"+str(i),selected)
 			elif selected: text_at("CURRENT CHARACTER",Vector2(x+18,606),14,c)
-		centered("J / right mouse / RT / ABILITY: character skill. Only Lyra fires bullets. Q inspects; it never swaps.",656,15,MUTED)
+		centered("J / right mouse / RT / ABILITY: musician skill. Only the Singer fires sound projectiles.",656,15,MUTED)
 		button("BACK",Rect2(490,674,300,34),"back",true)
 	elif screen == "select":
 		centered("CHOOSE YOUR MOVEMENT",151,34)
@@ -980,7 +985,7 @@ func draw_menu() -> void:
 		var entries = [
 			["MOVE / DODGE","WASD or arrows · Space to dodge through danger. A close dodge builds resonance."],
 			["STRIKE / DASH STRIKE","Hold K or click left mouse. Heavy attacks wind up; dodge cancels them without refunding recovery."],
-			["FOUR CHARACTERS","Choose before a run. Q inspects your character. Only Lyra shoots; J uses each character ability."],
+			["FOUR MUSICIANS","Choose drummer, bassist, guitarist or singer. The singer uses sound projectiles."],
 			["RESONANCE BREAK","Attacks and perfect dodges earn resonance. E spends 100 on a damaging break."],
 			["STAGGER / STYLE","Mix blade hits, abilities and ranged fire. Fill stagger to open a +30% damage window."],
 			["FORM SHIFTS","Boss health thresholds change perspective. W jumps in side view; S drops through platforms."],
@@ -1376,30 +1381,40 @@ func training_dps() -> float:
 	return damage/5.0
 
 func draw_weapon_badge(p: Vector2,weapon: Dictionary) -> void:
-	var c = Color(weapon.color)
+	# Selection icons use the same instruments shown in the new pixel performers.
+	var c := Color(weapon.color)
 	draw_circle(p,38,Color(c,0.07)); draw_circle(p,38,Color(c,0.25),false,1,true)
 	match weapon.shape:
-		"hammer": line(p+Vector2(-14,24),p+Vector2(12,-17),PAPER,4); poly_at(p,[Vector2(-2,-25),Vector2(28,-8),Vector2(16,10),Vector2(-14,-6)],1,c)
-		"knives":
-			for sign_x in [-1,1]: poly_at(p,[Vector2(sign_x*11,25),Vector2(sign_x*8,-27),Vector2(sign_x*24,-5)],1,c)
-		"saber": poly_at(p,[Vector2(-15,24),Vector2(10,-22),Vector2(27,-28),Vector2(-5,22)],1,c); line(p+Vector2(-22,11),p+Vector2(0,26),PAPER,3)
-		"spear": line(p+Vector2(-22,24),p+Vector2(17,-18),c,3); poly_at(p,[Vector2(11,-24),Vector2(29,-30),Vector2(22,-12)],1,PAPER)
+		"drums":
+			draw_circle(p+Vector2(0,8),17,c)
+			draw_circle(p+Vector2(0,8),12,INK)
+			line(p+Vector2(-22,-25),p+Vector2(9,-5),PAPER,3)
+			line(p+Vector2(21,-25),p+Vector2(-8,-5),PAPER,3)
+		"bass":
+			draw_circle(p+Vector2(-11,13),14,c)
+			draw_circle(p+Vector2(-16,9),6,INK)
+			line(p+Vector2(-5,4),p+Vector2(23,-25),PAPER,6)
+			line(p+Vector2(19,-28),p+Vector2(27,-20),c,5)
+		"guitar":
+			poly_at(p,[Vector2(-20,19),Vector2(-9,-4),Vector2(0,10),Vector2(12,0),Vector2(19,21),Vector2(0,16)],1,c)
+			line(p+Vector2(7,4),p+Vector2(27,-28),PAPER,5)
+			line(p+Vector2(-10,10),p+Vector2(12,10),INK,2)
+		"mic":
+			line(p+Vector2(-8,26),p+Vector2(10,-5),c,6)
+			draw_circle(p+Vector2(14,-15),12,PAPER)
+			draw_circle(p+Vector2(14,-15),8,c)
 
 func draw_equipped_weapon() -> void:
-	var weapon: Dictionary = active_melee if (melee_windup>0 or melee_flash>0) and not active_melee.is_empty() else Arsenal.SETS[weapon_index]
-	var aim: Vector2 = weapon.get("facing",facing)
-	var normal = aim.orthogonal()
-	var c = Color(weapon.color)
-	var hand = player+aim*18
-	line(player+Vector2(2,-1),hand,PAPER,3)
-	match weapon.shape:
-		"hammer":
-			line(hand,player+aim*42,PAPER,4)
-			draw_colored_polygon(PackedVector2Array([player+aim*34-normal*10,player+aim*49-normal*10,player+aim*49+normal*10,player+aim*34+normal*10]),c)
-		"knives":
-			for sign_x in [-1,1]: line(player+normal*sign_x*9+aim*12,player+normal*sign_x*9+aim*36,c,3)
-		"saber": line(hand,player+aim*53,c,4); line(hand-normal*7,hand+normal*7,PAPER,2)
-		"spear": line(player-aim*9,player+aim*62,c,3); draw_colored_polygon(PackedVector2Array([player+aim*75,player+aim*59-normal*5,player+aim*59+normal*5]),PAPER)
+	# Weapon art is already inside each authored attack frame; add a short impact
+	# waveform instead of drawing a second vector instrument on top of the sprite.
+	if melee_flash<=0.0: return
+	var aim: Vector2 = active_melee.get("facing",facing) if not active_melee.is_empty() else facing
+	if aim.length_squared()<0.01: aim = Vector2.RIGHT
+	var c := Color(Arsenal.SETS[weapon_index].color,clampf(melee_flash*5.0,0.0,0.9))
+	var direction := aim.angle()
+	var center := player+aim*27.0
+	draw_arc(center,32.0,direction-0.65,direction+0.65,14,c,3.0,true)
+	draw_arc(center,47.0,direction-0.48,direction+0.48,14,Color(c,0.65),2.0,true)
 
 func open_panel(panel: String) -> void:
 	if screen == panel: return
@@ -1512,7 +1527,7 @@ func draw_tutorial_hud() -> void:
 	text_at("COMPLETE" if tutorial.transition>0 else "%d / %d" % [tutorial.progress,lesson.count],Vector2(522,335),13,GOLD)
 
 func draw_character_portrait(p: Vector2,index: int) -> void:
-	StageArt.draw(self,p+Vector2(0,24),12+index,112)
+	StageArt.portrait(self,p,index)
 
 func configure_phone() -> void:
 	if phone_configuring: return
