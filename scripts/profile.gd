@@ -2,7 +2,7 @@ extends RefCounted
 ## Versioned local profile. Browser exports use Godot's IndexedDB-backed user://.
 const PATH := "user://profile.json"
 var path := PATH
-var data: Dictionary = {"version":1,"unlocked":0,"best":{},"volume":0.6,"shake":true,"assist":false}
+var data: Dictionary = {"version":1,"unlocked":0,"best":{},"volume":0.6,"shake":true,"assist":false,"difficulty":0,"flashes":true,"checkpoint":{}}
 func load_profile() -> void:
 	if not FileAccess.file_exists(path): return
 	var parser = JSON.new()
@@ -19,6 +19,7 @@ func load_profile() -> void:
 				valid_best[key] = {"time":maxf(0,record.time),"hits":maxi(0,int(record.hits))}
 		data.best = valid_best
 		data.unlocked = clampi(int(data.unlocked),0,2)
+		data.difficulty = clampi(int(parsed.get("difficulty",0)),0,2) if parsed.get("difficulty",0) is float or parsed.get("difficulty",0) is int else 0
 		data.volume = clampf(float(data.volume),0,1)
 func save_profile() -> void:
 	var file = FileAccess.open(path+".tmp",FileAccess.WRITE)
@@ -26,9 +27,11 @@ func save_profile() -> void:
 		file.store_string(JSON.stringify(data))
 		file.close()
 		DirAccess.rename_absolute(path+".tmp",path)
-func record_clear(index: int, seconds: float, hits: int) -> void:
+func record_key(index: int,difficulty: int = 0,assisted: Variant = null) -> String:
+	return str(index) + ("_d"+str(difficulty) if difficulty>0 else "") + ("_assist" if (bool(data.assist) if assisted == null else bool(assisted)) else "")
+func record_clear(index: int, seconds: float, hits: int,difficulty: int = 0,assisted: Variant = null) -> void:
 	data.unlocked = mini(2,maxi(int(data.unlocked),index+1))
-	var key = str(index) + ("_assist" if data.assist else "")
+	var key = record_key(index,difficulty,assisted)
 	if not data.best.has(key) or seconds < float(data.best[key].time):
 		data.best[key] = {"time":seconds,"hits":hits}
 	save_profile()

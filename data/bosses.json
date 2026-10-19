@@ -1,5 +1,51 @@
 [
- {"name":"THE METRONOME","subtitle":"Keeper of the first movement","color":"ef7854","hp":900,"interval":1.65,"speed":190,"patterns":["fan","ring","charge"],"arena":"THE RESONANCE CHAMBER"},
- {"name":"GLASS CANTOR","subtitle":"A voice split into a thousand edges","color":"63d9d1","hp":1200,"interval":1.4,"speed":215,"patterns":["rain","fan","cross","ring"],"arena":"THE SHATTERED CONSERVATORY"},
- {"name":"THE CONDUCTOR","subtitle":"Silence is the final instrument","color":"d8b4ff","hp":1600,"interval":1.2,"speed":235,"patterns":["cross","charge","rain","ring","fan"],"arena":"THE LAST AUDITORIUM"}
+  {
+    "name": "THE METRONOME",
+    "subtitle": "Keeper of the first movement",
+    "color": "ef7854",
+    "hp": 900,
+    "interval": 1.65,
+    "speed": 190,
+    "patterns": [
+      "fan",
+      "wave",
+      "charge",
+      "ring",
+      "mines"
+    ],
+    "arena": "THE RESONANCE CHAMBER"
+  },
+  {
+    "name": "GLASS CANTOR",
+    "subtitle": "A voice split into a thousand edges",
+    "color": "63d9d1",
+    "hp": 1200,
+    "interval": 1.4,
+    "speed": 215,
+    "patterns": [
+      "rain",
+      "prism",
+      "fan",
+      "mines",
+      "cross"
+    ],
+    "arena": "THE SHATTERED CONSERVATORY"
+  },
+  {
+    "name": "THE CONDUCTOR",
+    "subtitle": "Silence is the final instrument",
+    "color": "d8b4ff",
+    "hp": 1600,
+    "interval": 1.2,
+    "speed": 235,
+    "patterns": [
+      "cross",
+      "sweep",
+      "charge",
+      "spiral",
+      "wave",
+      "rain"
+    ],
+    "arena": "THE LAST AUDITORIUM"
+  }
 ]

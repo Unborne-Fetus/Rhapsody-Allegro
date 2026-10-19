@@ -1,0 +1,36 @@
+extends SceneTree
+## Optional native-renderer visual regression capture. Run with a real display or Xvfb.
+var game: Node2D
+func _initialize() -> void: call_deferred("run_capture")
+func capture(label: String) -> void:
+	game.queue_redraw()
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image = root.get_texture().get_image()
+	image.save_png("res://build/screenshots/"+label+".png")
+func run_capture() -> void:
+	DirAccess.make_dir_recursive_absolute("res://build/screenshots")
+	game = load("res://scenes/main.tscn").instantiate()
+	root.add_child(game); game.set_process(false); game.sound.enabled = false
+	game.profile.path = "user://presentation-test-profile.json"
+	game.profile.data.checkpoint = {}
+	await capture("title")
+	game.command("start"); await capture("loadout")
+	game.command("training"); game.banner_time = 0; game.elapsed = 20
+	game.execute_pattern("wave"); game.execute_pattern("fan")
+	for i in 40: game.simulate(1.0/60.0)
+	await capture("training")
+	for boss in 3:
+		game.start_fight(boss); game.banner_time = 0; game.elapsed = 20
+		for pattern in ["mines","prism"]: game.execute_pattern(pattern)
+		game.simulate(0.016)
+		await capture("boss-"+str(boss))
+	game.change_perspective(true); game.banner_time = 0; await capture("side-view")
+	game.used_touch = true; await capture("touch")
+	game.used_touch = false
+	game.screen = "intermission"; game.upgrade_options = game.run.choices(0); await capture("intermission")
+	game.screen = "settings"; await capture("settings")
+	game.screen = "help"; await capture("guide")
+	print("PRESENTATION_CAPTURE_COMPLETE")
+	quit()
