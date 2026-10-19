@@ -1,6 +1,7 @@
 extends RefCounted
 ## One painted atlas, shared by combat and the character/practice galleries.
 const ATLAS = preload("res://assets/performers-atlas.png")
+const PixelPerformers = preload("res://scripts/pixel_performers.gd")
 const BOSS_HEIGHTS := [186.0,180.0,185.0,172.0,180.0,174.0,180.0,175.0,173.0,174.0,176.0,180.0]
 # Hand-fit source rectangles preserve full shoes, headpieces and instrument tips.
 const REGIONS := [
@@ -24,7 +25,8 @@ static func boss(g: Node2D,p: Vector2,index: int,size: float) -> void:
 	var lean = sin(g.total_time*2+index)*1.5 if moving else 0.0
 	draw(g,p+Vector2(0,bob),index,BOSS_HEIGHTS[index]*size,false,1.0,lean*size)
 static func player(g: Node2D,p: Vector2,index: int,alpha: float) -> void:
-	var height = [105.0,98.0,106.0,101.0][index]
-	var stride = sin(g.elapsed*16)*1.5 if g.velocity.length()>40 else sin(g.total_time*2)*.8
-	# Atlas heroes face left. Runtime facing follows the shared aim rules.
-	draw(g,p+Vector2(0,stride),12+index,height,g.facing.x>0,alpha)
+	# Enemy artwork stays painted for now; playable classes use real 36-pose sprites.
+	PixelPerformers.player(g,p,index,alpha)
+
+static func portrait(g: Node2D,p: Vector2,index: int) -> void:
+	PixelPerformers.portrait(g,p,index)
