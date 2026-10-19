@@ -18,6 +18,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
  const bad={URL,Blob,Response,location:{href:'https://example.test/rhapsody/'},window:{fetch:async()=>new Response('missing',{status:404})}};
  vm.runInNewContext(loader,bad);
  await assert.rejects(bad.window.fetch('https://example.test/rhapsody/index.wasm'),/Engine download failed/);
+ assert(!fs.readdirSync('dist').some(name=>name.startsWith('.index.') || name.endsWith('.import') || name.includes('.pck-')),'temporary export files must not be shipped');
  const largest=Math.max(...fs.readdirSync('dist').filter(x=>x.endsWith('.bin')).map(x=>fs.statSync('dist/'+x).size));
  assert(largest<=25*1024*1024);
  console.log('Split-engine loader: byte-identical, valid WASM, correct MIME, host size limits PASS');

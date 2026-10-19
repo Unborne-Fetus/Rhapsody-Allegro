@@ -7,7 +7,12 @@ import shutil, json, hashlib
 root = Path(__file__).resolve().parents[1]
 source, dest = root/'build/web', root/'dist'
 if dest.exists(): shutil.rmtree(dest)
-shutil.copytree(source,dest)
+dest.mkdir(parents=True)
+# Export directories can retain interrupted engine copies and import sidecars.
+# Only runtime files belong in the hosted build.
+for asset in source.iterdir():
+    if asset.is_file() and not asset.name.startswith('.') and asset.suffix in {'.html','.js','.wasm','.pck','.png'}:
+        shutil.copy2(asset,dest/asset.name)
 wasm=(dest/'index.wasm').read_bytes()
 chunks=[]
 for index,start in enumerate(range(0,len(wasm),12*1024*1024)):
