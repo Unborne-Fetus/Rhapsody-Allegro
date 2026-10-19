@@ -140,6 +140,8 @@ var shake := 0.0
 var buttons: Array = []
 var panel_style_cache: Dictionary = {}
 var render_elapsed := 0.0
+const SIMULATION_STEP := 1.0/60.0
+var simulation_elapsed := 0.0
 var menu_focus := -1
 var touches: Dictionary = {}
 var touch_origin := Vector2.ZERO
@@ -601,8 +603,18 @@ func _process(raw_delta: float) -> void:
 	total_time += delta
 	gamepad_input()
 	if screen == "playing":
-		if hit_stop>0: hit_stop = maxf(0,hit_stop-delta)
-		else: simulate(delta)
+		# Fixed simulation steps keep hits and fast projectile checks consistent
+		# when the GPU can only manage ~30 rendered frames per second.
+		simulation_elapsed = minf(simulation_elapsed+delta,SIMULATION_STEP*3.0)
+		while simulation_elapsed>=SIMULATION_STEP:
+			simulation_elapsed -= SIMULATION_STEP
+			if hit_stop>0.0: hit_stop = maxf(0.0,hit_stop-SIMULATION_STEP)
+			else: simulate(SIMULATION_STEP)
+			if screen != "playing":
+				simulation_elapsed = 0.0
+				break
+	else:
+		simulation_elapsed = 0.0
 	if screen in ["playing","clear","dead"]:
 		# Reverse removal avoids rebuilding three arrays and allocating lambda
 		# closures on every simulation frame.
