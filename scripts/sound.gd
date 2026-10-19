@@ -2,30 +2,49 @@ extends Node
 ## Original generated effects. No external tracks or copyrighted samples.
 var voices: Array[AudioStreamPlayer] = []
 var enabled := true
+# A drum/bass hit can repeat dozens of times each second. Synthesis on *every*
+# call used to allocate PCM buffers and recalculate thousands of sine samples.
+# Cache the short deterministic cues and never synthesize if every voice is busy.
+const MAX_CACHED_TONES := 96
+var tone_cache: Dictionary = {}
 func _ready() -> void:
 	setup_music()
 	for i in 10:
 		var voice = AudioStreamPlayer.new()
 		add_child(voice)
 		voices.append(voice)
+
 func tone(freq: float, duration: float = 0.09, gain: float = 0.13) -> void:
 	if not enabled: return
-	var stream = AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = 22050
-	var bytes = PackedByteArray()
-	bytes.resize(int(duration*22050)*2)
-	for i in bytes.size()/2:
-		var t = float(i)/22050.0
-		var envelope = pow(1.0-t/duration,2.0)*minf(t*500.0,1.0)
-		var value = int(sin(TAU*freq*t)*envelope*gain*32760)
-		bytes.encode_s16(i*2,value)
-	stream.data = bytes
+	var available: AudioStreamPlayer = null
 	for voice in voices:
 		if not voice.playing:
-			voice.stream = stream
-			voice.play()
-			return
+			available = voice
+			break
+	if available == null: return
+	var frequency := maxi(1,roundi(freq))
+	var millis := maxi(1,roundi(duration*1000.0))
+	var amplitude := clampi(roundi(gain*1000.0),0,1000)
+	var key := Vector3i(frequency,millis,amplitude)
+	if not tone_cache.has(key):
+		var stream := AudioStreamWAV.new()
+		stream.format = AudioStreamWAV.FORMAT_16_BITS
+		stream.mix_rate = 22050
+		var seconds := float(millis)/1000.0
+		var samples := maxi(1,roundi(seconds*22050.0))
+		var bytes := PackedByteArray()
+		bytes.resize(samples*2)
+		for i in samples:
+			var t := float(i)/22050.0
+			var envelope := pow(maxf(0.0,1.0-t/seconds),2.0)*minf(t*500.0,1.0)
+			var value := int(sin(TAU*float(frequency)*t)*envelope*float(amplitude)*32.76)
+			bytes.encode_s16(i*2,value)
+		stream.data = bytes
+		if tone_cache.size()>=MAX_CACHED_TONES:
+			tone_cache.clear()
+		tone_cache[key] = stream
+	available.stream = tone_cache[key]
+	available.play()
 
 var music: AudioStreamPlayer
 var intensity: AudioStreamPlayer
