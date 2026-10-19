@@ -10,6 +10,7 @@ if errorlevel 1 (
 )
 if not exist build\web mkdir build\web
 if not exist build\windows mkdir build\windows
+type nul > build\.gdignore
 "%GODOT%" --headless --editor --import --quit
 if errorlevel 1 exit /b 1
 "%GODOT%" --headless --script res://tests/combat_test.gd

@@ -15,6 +15,7 @@ for index,start in enumerate(range(0,len(wasm),12*1024*1024)):
     (dest/name).write_bytes(wasm[start:start+12*1024*1024])
     chunks.append(name)
 (dest/'index.wasm').unlink()
+(dest/'.gdignore').touch()
 loader='''<script>
 // Large WebAssembly assets are split solely for static-host compatibility.
 const originalFetch = window.fetch.bind(window);
@@ -36,7 +37,6 @@ html=(dest/'index.html').read_text()
 html=html.replace('<head>','<head>\n'+loader)
 html=html.replace('<title>Rhapsody: Allegro</title>','<title>Rhapsody: Allegro — Play</title>')
 (dest/'index.html').write_text(html)
-(dest/'_headers').write_text('/*.bin\n  Content-Type: application/octet-stream\n  Cache-Control: public, max-age=31536000, immutable\n/index.html\n  Cache-Control: no-cache\n')
 # Content changes across builds: do not cache stable engine filenames forever.
 (dest/'_headers').write_text('/*.bin\n  Content-Type: application/octet-stream\n  Cache-Control: public, max-age=3600\n/index.html\n  Cache-Control: no-cache\n')
 print(f'Packaged {len(wasm):,} engine bytes into {len(chunks)} chunks.')

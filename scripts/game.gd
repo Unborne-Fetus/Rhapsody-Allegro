@@ -110,7 +110,7 @@ func _input(event: InputEvent) -> void:
 				elif screen == "paused": screen = "playing"
 				elif screen == "settings": screen = settings_from
 			KEY_ENTER:
-				if screen == "title": start_fight(0)
+				if screen == "title": practice = false; start_fight(0)
 				elif screen == "dead": start_fight(boss_index)
 				elif screen == "clear": advance()
 			KEY_SPACE:
@@ -237,7 +237,7 @@ func gamepad_input() -> void:
 					JOY_BUTTON_Y: burst()
 					JOY_BUTTON_LEFT_SHOULDER: parry()
 			elif binding == JOY_BUTTON_A:
-				if screen == "title": start_fight(0)
+				if screen == "title": practice = false; start_fight(0)
 				elif screen == "dead": start_fight(boss_index)
 				elif screen == "clear": advance()
 		gamepad_previous[binding] = down

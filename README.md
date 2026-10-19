@@ -65,6 +65,8 @@ The **Build and Test Rhapsody** workflow imports the project, runs combat tests,
 
 GitHub Pages deployment is optional: enable Pages with **GitHub Actions** as the source and set repository variable `ENABLE_GITHUB_PAGES=true`. Private-repository Pages availability depends on your GitHub plan; the private testing link above is independent of Pages.
 
+The initial GitHub-hosted run could not start its build runner and produced no step logs. Local Godot regression tests and both exports passed; the automated browser test is provided but has not yet completed successfully.
+
 ## Source map
 
 | File | Responsibility |

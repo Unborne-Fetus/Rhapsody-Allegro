@@ -26,9 +26,11 @@ jobs:
       - name: Export Web and Windows
         run: |
           mkdir -p build/web build/windows
+          touch build/.gdignore
           godot --headless --export-release Web
           godot --headless --export-release Windows
           python3 tools/package_web.py
+          node tests/package.cjs
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
