@@ -176,6 +176,9 @@ try {
     Set-Location $root
     EnsureEditor
     if ($Mode -eq 'play') {
+        # A fresh Git checkout does not include Godot's ignored texture import
+        # cache. Import before the first play so SVG and PNG textures can load.
+        RunGodot 'Importing/refreshing playable project assets' @('--headless', '--path', $root, '--editor', '--import', '--quit')
         Log 'Starting the real Godot project (no export templates needed)...'
         & $script:editor --path $root
         if ($LASTEXITCODE -ne 0) { throw "The game exited with code $LASTEXITCODE." }
