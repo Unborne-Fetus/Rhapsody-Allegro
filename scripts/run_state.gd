@@ -56,13 +56,13 @@ func choices(boss_index: int) -> Array:
 	for i in mini(3,available.size()): result.append(available[i])
 	return result
 func snapshot(next_boss: int,assist: bool) -> Dictionary:
-	return {"seed":seed_value,"boss":next_boss,"upgrades":upgrades.duplicate(),"difficulty":difficulty,"assist":assist or assisted,"score":score,"time":time,"hits":hits}
+	return {"seed":seed_value,"boss":next_boss,"upgrades":upgrades.duplicate(),"difficulty":difficulty,"assist":assist,"assisted":assist or assisted,"score":score,"time":time,"hits":hits}
 func restore(value: Dictionary) -> bool:
 	if not value.get("boss") is float and not value.get("boss") is int: return false
 	if int(value.boss)<0 or int(value.boss)>2: return false
 	reset(int(number(value.get("difficulty",0))))
 	seed_value = int(number(value.get("seed",1)))
-	assisted = value.get("assist",false) == true
+	assisted = value.get("assisted",value.get("assist",false)) == true
 	if value.get("upgrades") is Array:
 		for id in value.upgrades:
 			if id is String and UPGRADES.any(func(u): return u.id == id) and not has(id): upgrades.append(id)

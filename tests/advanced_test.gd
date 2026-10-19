@@ -27,6 +27,9 @@ func run_tests() -> void:
 	var snapshot = run.snapshot(2,true)
 	var restored = game.RunState.new()
 	check(restored.restore(snapshot) and restored.upgrades == run.upgrades and restored.assisted,"Checkpoint round trip")
+	run.assisted = true
+	var prior_assist = run.snapshot(1,false)
+	check(prior_assist.assist == false and restored.restore(prior_assist) and restored.assisted,"Checkpoint preserves current assist toggle separately from run classification")
 	check(not restored.restore({"boss":"bad"}),"Invalid boss checkpoint rejected")
 	check(restored.restore({"boss":1,"difficulty":{},"score":[],"time":"bad","hits":{},"upgrades":["invented","edge","edge"]}),"Malformed optional checkpoint fields sanitized")
 	check(restored.upgrades == ["edge"] and restored.score == 0,"Unknown and duplicate upgrade IDs removed")

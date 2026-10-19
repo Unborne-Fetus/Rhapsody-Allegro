@@ -32,13 +32,13 @@ Side view has three one-way platforms, buffered jumps and a short coyote-time gr
 
 ## Save integrity
 
-Profiles remain version 1 for backwards compatibility with the original prototype; additional fields have defaults. Writes use a temporary file followed by rename. Corrupt JSON falls back safely. Unknown/duplicate augmentation IDs are removed when restoring a checkpoint. Difficulty and assist records are separated, and turning assist off after benefiting from it cannot relabel that fight as standard.
+Profiles remain version 1 for backwards compatibility with the original prototype; additional fields have defaults. Writes use a temporary file followed by rename. Corrupt JSON falls back safely. Unknown/duplicate augmentation IDs are removed when restoring a checkpoint. The current assist toggle is stored separately from whether a run has ever used assist. Difficulty and assist records are separated, and turning assist off after benefiting from it cannot relabel that fight as standard.
 
 ## Rendering and verification
 
 Original vector figures provide a player silhouette, a clockwork sentinel, a crystalline singer, and a conductor with marionette strings. These remain prototype art. Real native OpenGL captures are part of presentation verification. Impact flashes and screen shake can be reduced independently.
 
-Regression coverage spans 155 checks across base combat, new mechanics, run transitions and dispatched keyboard/mouse/multitouch events, plus 24 minutes of combined simulation, with object bounds checked across nine boss/difficulty combinations. The web packager's content-addressed chunk loader is tested for byte identity, valid WebAssembly, MIME, host asset limits, normal resource fallthrough and failed chunk handling.
+Regression coverage spans 156 checks across base combat, new mechanics, run transitions and dispatched keyboard/mouse/multitouch events, plus 24 minutes of combined simulation, with object bounds checked across nine boss/difficulty combinations. The web packager's content-addressed chunk loader is tested for byte identity, valid WebAssembly, MIME, host asset limits, normal resource fallthrough and failed chunk handling.
 
 A real exported-browser smoke test is included for CI. The GitHub-hosted runner has failed before starting its job, so browser end-to-end verification remains a known gap. Safari, physical controller variations, multitouch ergonomics and low-power mobile performance still need human playtesting.
 

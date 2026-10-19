@@ -1108,7 +1108,7 @@ func draw_upgrade_icon(p: Vector2,type: String) -> void:
 func restart_fight() -> void:
 	run.score = fight_base_score; run.time = fight_base_time; run.hits = fight_base_hits
 	if not training and not practice:
-		profile.data.checkpoint = run.snapshot(boss_index,fight_assisted)
+		profile.data.checkpoint = run.snapshot(boss_index,bool(profile.data.assist))
 		profile.save_profile()
 	start_fight(boss_index)
 
