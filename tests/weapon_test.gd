@@ -31,12 +31,28 @@ func run_tests() -> void:
 	var cached_styles = game.panel_style_cache.size()
 	game.panel_style(Color("182432"),Color("4a6472"))
 	check(game.panel_style_cache.size() == cached_styles,"Repeated menu rendering does not allocate more style resources")
+	game.sound.enabled = true
+	game.sound.tone(440.0,0.05,0.13)
+	var sample_key := Vector3i(440,50,130)
+	check(game.sound.tone_cache.has(sample_key),"First tone populates the PCM cache")
+	var first_sample = game.sound.tone_cache.get(sample_key)
+	for voice in game.sound.voices: voice.stop()
+	game.sound.tone(440.0,0.05,0.13)
+	check(game.sound.tone_cache.get(sample_key) == first_sample,"Repeated tones reuse an audio sample")
+	for voice in game.sound.voices: voice.stop()
+	game.sound.enabled = false
 	game.profile.data.eco_mode = true; game.sparks.clear()
 	game.emit_sparks(Vector2(500,400),game.TEAL,300)
 	check(game.sparks.size() == 80,"Eco mode respects its eighty-particle VFX budget")
 	game.sparks.clear(); game.profile.data.eco_mode = false
 	game.emit_sparks(Vector2(500,400),game.TEAL,300)
 	check(game.sparks.size() == 300,"Full effects mode preserves the original particle budget")
+	prepare(2)
+	game.profile.data.eco_mode = true
+	var time_before := game.elapsed
+	game._process(1.0/30.0)
+	check(is_equal_approx(game.elapsed-time_before,2.0/60.0),"Eco visual refresh still advances two fixed simulation ticks")
+	check(game.profile.data.eco_mode,"Low power preference is not overridden by simulation")
 	game.sparks.clear()
 	game.profile.data.eco_mode = true
 	game.command("eco_mode")
