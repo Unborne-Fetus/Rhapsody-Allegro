@@ -1381,30 +1381,40 @@ func training_dps() -> float:
 	return damage/5.0
 
 func draw_weapon_badge(p: Vector2,weapon: Dictionary) -> void:
-	var c = Color(weapon.color)
+	# Selection icons use the same instruments shown in the new pixel performers.
+	var c := Color(weapon.color)
 	draw_circle(p,38,Color(c,0.07)); draw_circle(p,38,Color(c,0.25),false,1,true)
 	match weapon.shape:
-		"hammer": line(p+Vector2(-14,24),p+Vector2(12,-17),PAPER,4); poly_at(p,[Vector2(-2,-25),Vector2(28,-8),Vector2(16,10),Vector2(-14,-6)],1,c)
-		"knives":
-			for sign_x in [-1,1]: poly_at(p,[Vector2(sign_x*11,25),Vector2(sign_x*8,-27),Vector2(sign_x*24,-5)],1,c)
-		"saber": poly_at(p,[Vector2(-15,24),Vector2(10,-22),Vector2(27,-28),Vector2(-5,22)],1,c); line(p+Vector2(-22,11),p+Vector2(0,26),PAPER,3)
-		"spear": line(p+Vector2(-22,24),p+Vector2(17,-18),c,3); poly_at(p,[Vector2(11,-24),Vector2(29,-30),Vector2(22,-12)],1,PAPER)
+		"drums":
+			draw_circle(p+Vector2(0,8),17,c)
+			draw_circle(p+Vector2(0,8),12,INK)
+			line(p+Vector2(-22,-25),p+Vector2(9,-5),PAPER,3)
+			line(p+Vector2(21,-25),p+Vector2(-8,-5),PAPER,3)
+		"bass":
+			draw_circle(p+Vector2(-11,13),14,c)
+			draw_circle(p+Vector2(-16,9),6,INK)
+			line(p+Vector2(-5,4),p+Vector2(23,-25),PAPER,6)
+			line(p+Vector2(19,-28),p+Vector2(27,-20),c,5)
+		"guitar":
+			poly_at(p,[Vector2(-20,19),Vector2(-9,-4),Vector2(0,10),Vector2(12,0),Vector2(19,21),Vector2(0,16)],1,c)
+			line(p+Vector2(7,4),p+Vector2(27,-28),PAPER,5)
+			line(p+Vector2(-10,10),p+Vector2(12,10),INK,2)
+		"mic":
+			line(p+Vector2(-8,26),p+Vector2(10,-5),c,6)
+			draw_circle(p+Vector2(14,-15),12,PAPER)
+			draw_circle(p+Vector2(14,-15),8,c)
 
 func draw_equipped_weapon() -> void:
-	var weapon: Dictionary = active_melee if (melee_windup>0 or melee_flash>0) and not active_melee.is_empty() else Arsenal.SETS[weapon_index]
-	var aim: Vector2 = weapon.get("facing",facing)
-	var normal = aim.orthogonal()
-	var c = Color(weapon.color)
-	var hand = player+aim*18
-	line(player+Vector2(2,-1),hand,PAPER,3)
-	match weapon.shape:
-		"hammer":
-			line(hand,player+aim*42,PAPER,4)
-			draw_colored_polygon(PackedVector2Array([player+aim*34-normal*10,player+aim*49-normal*10,player+aim*49+normal*10,player+aim*34+normal*10]),c)
-		"knives":
-			for sign_x in [-1,1]: line(player+normal*sign_x*9+aim*12,player+normal*sign_x*9+aim*36,c,3)
-		"saber": line(hand,player+aim*53,c,4); line(hand-normal*7,hand+normal*7,PAPER,2)
-		"spear": line(player-aim*9,player+aim*62,c,3); draw_colored_polygon(PackedVector2Array([player+aim*75,player+aim*59-normal*5,player+aim*59+normal*5]),PAPER)
+	# Weapon art is already inside each authored attack frame; add a short impact
+	# waveform instead of drawing a second vector instrument on top of the sprite.
+	if melee_flash<=0.0: return
+	var aim: Vector2 = active_melee.get("facing",facing) if not active_melee.is_empty() else facing
+	if aim.length_squared()<0.01: aim = Vector2.RIGHT
+	var c := Color(Arsenal.SETS[weapon_index].color,clampf(melee_flash*5.0,0.0,0.9))
+	var direction := aim.angle()
+	var center := player+aim*27.0
+	draw_arc(center,32.0,direction-0.65,direction+0.65,14,c,3.0,true)
+	draw_arc(center,47.0,direction-0.48,direction+0.48,14,Color(c,0.65),2.0,true)
 
 func open_panel(panel: String) -> void:
 	if screen == panel: return
