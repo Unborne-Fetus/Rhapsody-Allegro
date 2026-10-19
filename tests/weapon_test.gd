@@ -8,7 +8,7 @@ func check(condition: bool,message: String) -> void:
 	if not condition: failures += 1; push_error(message)
 func _initialize() -> void: call_deferred("run_tests")
 func prepare(index: int,distance: float = 60) -> void:
-	game.command("menu"); game.screen = "loadout"; game.run.reset()
+	game.parry_enabled = false; game.command("menu"); game.screen = "loadout"; game.run.reset()
 	game.equip_set(index); game.training = true; game.training_attacks = false; game.practice = true
 	game.start_fight(0); game.player = Vector2(400,400); game.boss = Vector2(400+distance,400)
 	game.gamepad = true; game.used_touch = false; game.profile.data.assist = false
@@ -48,13 +48,13 @@ func run_tests() -> void:
 			finish_strike()
 			check(is_equal_approx(game.training_last_hit,c.power),"Melee ability damage")
 			if i == 1: check(game.bleed_stacks == 1,"Razorstep applies bleeding")
-			if i == 2: check(game.parry_time>0,"Crescent Guard grants parry window")
+			if i == 2: check(game.parry_time == 0,"Crescent Sweep has no active parry")
 		else:
 			check(game.shots.size() == 1 and game.shots[0].source_set == 3,"Only Horizon fires player bullets")
 			check(game.shots[0].damage == 12,"Horizon modest close-range damage")
 			var shot = game.shots[0]; shot.step(10)
 			check(is_equal_approx(shot.distance_traveled,926) and shot.life<=0,"Projectile cannot exceed declared range")
-		prepare(i); game.parry(); var shot = game.Shot.new(game.player,Vector2.ZERO,false); game.shots.append(shot); game.simulate(0.005)
+		prepare(i); game.parry_enabled = true; game.parry(); var shot = game.Shot.new(game.player,Vector2.ZERO,false); game.shots.append(shot); game.simulate(0.005)
 		check(shot.friendly == (i == 3),"Only Horizon reflects bullets")
 		check(game.parries == 1,"Each character can parry")
 		if i == 2:
@@ -101,8 +101,11 @@ func run_tests() -> void:
 	check(game.shots.size() == 1 and not game.shots[0].friendly,"Dodge lesson supplies safe practice shot")
 	game.shots.clear(); game.dodge(); game.shots.append(game.Shot.new(game.player,Vector2.ZERO,false)); game.simulate(0.005); next_lesson()
 	check(game.tutorial.step == 4,"Real projectile dodge advances lesson")
-	game.parry(); game.shots.append(game.Shot.new(game.player,Vector2.ZERO,false)); game.simulate(0.005); next_lesson()
-	check(game.tutorial.step == 5 and game.resonance == 100,"Parry lesson advances to charged resonance")
+	game.player = game.boss-Vector2(55,0)
+	for i in 2:
+		game.melee_cd = 0; game.melee(); finish_strike()
+	next_lesson()
+	check(game.tutorial.step == 5 and game.resonance == 100,"Energy recovery lesson advances to charged resonance")
 	game.burst(); next_lesson(); check(game.tutorial.step == 6 and game.side,"Resonance lesson introduces side view")
 	game.player = Vector2(380,420); game.velocity = Vector2(0,250)
 	for i in 30: game.simulate(1.0/60)

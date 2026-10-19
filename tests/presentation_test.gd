@@ -45,7 +45,7 @@ func run_capture() -> void:
 	for step in [0,3,6,7]:
 		game.tutorial.step = step; game.setup_tutorial_stage(); await capture("tutorial-"+str(step))
 	game.command("menu"); game.screen = "intermission"
-	game.upgrade_options = [game.RunState.UPGRADES[7],game.RunState.UPGRADES[3],game.RunState.UPGRADES[4]]
+	game.upgrade_options = [game.RunState.UPGRADES[7],game.RunState.UPGRADES[1],game.RunState.UPGRADES[4]]
 	game.ui_mouse_active = false
 	for focus in 3:
 		game.menu_focus = focus; game.upgrade_focus = focus; await capture("mechanic-"+str(focus))

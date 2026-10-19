@@ -1,14 +1,14 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.6** adds a phone interface designed for two thumbs: larger controls, optional automatic basic attacks, portrait menus and an adaptive portrait arena camera. The seven-boss campaign, song encounters and fixed character kits remain.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.6.1** raises jump height, moves AUTO into a small top-left HUD control and defers parrying. The phone interface adds a phone interface designed for two thumbs: larger controls, optional automatic basic attacks, portrait menus and an adaptive portrait arena camera. The seven-boss campaign, song encounters and fixed character kits remain.
 
 **[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
 ## Gameplay
 
-- **Eight tutorial lessons:** movement, melee, character ability, perfect dodge, parry, resonance, platform jumping and a rehearsal boss. Progress requires completing each objective. Death retries the lesson; campaign saves and records are preserved.
+- **Eight tutorial lessons:** movement, melee, character ability, perfect dodge, energy recovery, resonance, platform jumping and a rehearsal boss. Progress requires completing each objective. Death retries the lesson; campaign saves and records are preserved.
 - **Four characters:** choose before the run. Each owns a set, ability, passive and drawback. Character choice stays locked through fights, retries and intermissions.
-- **Only Horizon fires player bullets.** The other three characters have melee abilities and absorb parried projectiles. Lyra can reflect them.
+- **Only Horizon fires player bullets.** The other three characters have melee abilities. Parrying is deferred; its implementation remains in source.
 - **Harder bosses:** more health, faster pressure, pursuit, close-range sweeps, anti-kiting mines and later-phase chains. Every attack retains a warning. Stagger openings are shorter and cannot permanently lock a boss.
 - **Contextual upgrade panels:** hover, focus or tap a card to read its core mechanics, including resonance, stagger and energy. Use CHOOSE to commit.
 - **Seven-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
@@ -17,9 +17,9 @@ A Godot action boss rush that changes between top-down and side-scrolling combat
 
 ## Play with two thumbs
 
-Phones automatically get a dedicated interface in portrait or landscape. The left control area is a floating movement stick. In side view, flick it upward to jump and downward to drop through platforms; a right-side JUMP button is also available. The right thumb can slide between large DODGE, ABILITY and PARRY buttons without lifting. Holding ABILITY repeats it; BREAK spends full resonance.
+Phones automatically get a dedicated interface in portrait or landscape. The left control area is a floating movement stick. In side view, flick it upward to jump and downward to drop through platforms; a right-side JUMP button is also available. The right thumb can slide between large DODGE and ABILITY buttons without lifting. Holding ABILITY repeats it; BREAK spends full resonance.
 
-**AUTO starts enabled on phones.** Basic melee attacks trigger only when the boss is within reach. Horizon also fires automatically from range while preserving enough energy for a dodge. Abilities, dodges, parries and breaks remain manual. Tap AUTO to disable it and expose a manual STRIKE button; the setting persists. Auto attack uses the same damage, windups, cooldowns, energy and collision rules as manual input.
+**AUTO starts enabled on phones.** Basic melee attacks trigger only when the boss is within reach. Horizon also fires automatically from range while preserving enough energy for a dodge. Abilities, dodges and breaks remain manual. Tap the small top-left AUTO control to disable it and expose a manual STRIKE button; the setting persists. Auto attack uses the same damage, windups, cooldowns, energy and collision rules as manual input.
 
 Portrait has large menu cards, a separate lower control area and a camera that frames both fighters. Landscape gives the arena more space. Rotating the phone pauses a fight and clears held input. Upgrade cards use a large inspection list plus a separate confirmation button. The tutorial includes thumb-specific instructions. Safe-area padding keeps browser controls away from notches and home indicators, page gestures are disabled on the canvas, and supported browsers can keep the screen awake. Fullscreen is optional in Settings.
 
@@ -34,7 +34,7 @@ Open **Boss Practice → Song Encounters** to try any of these immediately, or c
 | The Everlasting Parade | Village People — Can't Stop the Music | Six spectral performers, alternating floor tiles and open spotlight lanes |
 | The Feedback Tyrant | Quiet Riot — Cum On Feel the Noize | Gapped speaker shockwaves, amplifier walls, stage dives and a three-attack silence cycle |
 
-Each has three named phases, its own arena and silhouette, movement behavior, telegraphs, later-phase follow-ups and parryable volleys. Encounter notes in the pause menu explain the central mechanic. These are original interpretations with synthesized effects; recordings and lyrics are not bundled.
+Each has three named phases, its own arena and silhouette, movement behavior, telegraphs, later-phase follow-ups and projectile volleys. Encounter notes in the pause menu explain the central mechanic. These are original interpretations with synthesized effects; recordings and lyrics are not bundled.
 
 ## Characters
 
@@ -42,7 +42,7 @@ Each has three named phases, its own arena and silhouette, movement behavior, te
 |---|---|---|---|
 | Bram / Breaker | Heavy area slam | 20% damage reduction; 150 HP | Slow movement and dodge recovery |
 | Vex / Flurry | Knife lunge | Up to three bleeding stacks | 80 HP; +15% incoming damage |
-| Aria / Cadence | Saber sweep with parry window | Parry empowers next strike by 50% | Normal strikes build 20% less stagger |
+| Aria / Cadence | Wide saber sweep | Finishers restore 8 extra energy | Normal strikes build 20% less stagger |
 | Lyra / Horizon | Long-range marksman shot | +25% shot damage beyond 400 units | 75 HP; +20% incoming damage |
 
 Bram is slow and close with high impact; Vex is extremely fast and close with light hits; Aria has balanced mid-range saber attacks; Lyra has long reach and modest shot damage / cadence. See [character tuning](docs/WEAPONS.md) for values. All are available immediately. Original vector prototype art and synthesized effects remain; final animation, music, story and campaign expansion are open for feedback.
@@ -56,7 +56,6 @@ Bram is slow and close with high impact; Vex is extremely fast and close with li
 | Character ability | Hold J / right mouse | RT / R2 or RB / R1 |
 | Inspect locked character | Q | B / Circle |
 | Dodge | Space | A / Cross |
-| Parry | L | LB / L1 |
 | Resonance break | E at full meter | Y / Triangle |
 | Jump / drop through | W / Up; S / Down | D-pad Up / stick up; stick down |
 | Pause / guide | Escape / P; H | Start; pause menu |
@@ -102,3 +101,5 @@ GitHub Actions builds Web and Windows artifacts and runs the browser smoke test.
 `scripts/game.gd` owns encounter flow and interface. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `phone_ui.gd` draws the thumb interface; phone routing and camera integration use the shared game simulation. `song_bosses.gd` owns the custom encounter mechanics, attacks and vector figures; `encounters.gd` provides shared roster bounds. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
 
 See [foundation notes](docs/FOUNDATION.md). No third-party art or recordings are bundled. Godot's engine and default font retain upstream licenses. No license for original game source has been granted yet.
+
+Jump launch speed is 740 units/second, up from 570 (about 69% more height at unchanged gravity). Parry input, automatic parry windows and parry upgrades are disabled through `combat_rules.gd`; the code and legacy regression coverage are retained for future development. Existing Golden Window upgrades convert to an unowned active upgrade when a checkpoint loads.

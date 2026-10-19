@@ -88,7 +88,7 @@ func run_tests() -> void:
 	game.command("menu"); game.profile.data.tutorial_complete = false; await settle()
 	await tap_key(KEY_ENTER)
 	check(game.tutorial_active and game.tutorial.step == 0,"First-visit primary action starts tutorial")
-	game.command("menu"); game.screen = "intermission"; game.upgrade_options = [game.RunState.UPGRADES[7],game.RunState.UPGRADES[3],game.RunState.UPGRADES[4]]
+	game.command("menu"); game.screen = "intermission"; game.upgrade_options = [game.RunState.UPGRADES[7],game.RunState.UPGRADES[1],game.RunState.UPGRADES[4]]
 	await settle(); await tap_key(KEY_DOWN); await tap_key(KEY_DOWN)
 	check(game.upgrade_focus == 1 and game.screen == "intermission","Keyboard focus updates mechanic panel")
 	var motion = InputEventMouseMotion.new(); motion.position = root.get_final_transform()*Vector2(300,260); motion.relative = Vector2(10,10)

@@ -1,5 +1,6 @@
 extends RefCounted
 ## Run progression and tuning, independent of scene/input/rendering.
+const CombatRules = preload("res://scripts/combat_rules.gd")
 const Encounters = preload("res://scripts/encounters.gd")
 const Arsenal = preload("res://scripts/weapons.gd")
 const Characters = preload("res://scripts/characters.gd")
@@ -45,7 +46,7 @@ func stat(name: String) -> float:
 		"resonance": return 1.35 if has("echo") else 1.0
 	return 1.0
 func choices(boss_index: int) -> Array:
-	var available = UPGRADES.filter(func(u): return not has(u.id))
+	var available = active_upgrades().filter(func(u): return not has(u.id))
 	var result: Array = []
 	if available.is_empty(): return result
 	var random = RandomNumberGenerator.new()
@@ -67,6 +68,11 @@ func restore(value: Dictionary) -> bool:
 	if value.get("upgrades") is Array:
 		for id in value.upgrades:
 			if id is String and UPGRADES.any(func(u): return u.id == id) and not has(id): upgrades.append(id)
+	# Retire old parry upgrades without leaving an unusable choice in a saved build.
+	if not CombatRules.PARRY_ENABLED and has("guard"):
+		upgrades.erase("guard")
+		for replacement in ["step","cell","heart","edge","fire","echo","siphon"]:
+			if not has(replacement): upgrades.append(replacement); break
 	score = maxi(0,int(number(value.get("score",0))))
 	time = maxf(0,number(value.get("time",0)))
 	hits = maxi(0,int(number(value.get("hits",0))))
@@ -75,3 +81,6 @@ func restore(value: Dictionary) -> bool:
 static func number(value: Variant) -> float:
 	if (value is int or value is float) and is_finite(float(value)): return float(value)
 	return 0.0
+
+static func active_upgrades() -> Array:
+	return UPGRADES.filter(func(u): return CombatRules.PARRY_ENABLED or u.id != "guard")

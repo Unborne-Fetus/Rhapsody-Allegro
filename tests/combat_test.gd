@@ -45,12 +45,13 @@ func run() -> void:
 	check(game.energy == 0,"No dodge with insufficient energy")
 	game.start_fight(0)
 	game.invincible = 0
-	game.parry()
+	game.parry_enabled = true; game.parry()
 	var shot = game.Shot.new(game.player,Vector2(0,20),false)
 	game.shots.append(shot)
 	game.simulate(0.016)
 	check(not shot.friendly and shot.life<=0,"Saber parry absorbs projectile")
 	check(game.resonance>0 and game.hp == 100,"Parry charges resonance without damage")
+	game.parry_enabled = false
 	game.resonance = 100
 	game.shots.append(game.Shot.new(Vector2(200,200),Vector2.ZERO,false))
 	game.burst()

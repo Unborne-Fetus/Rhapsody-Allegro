@@ -11,18 +11,18 @@ func controls(g: Node2D) -> Array:
 	if portrait:
 		items = [[Vector2(565,1060),"dodge","DODGE",88.0],[Vector2(424,916),"shoot","ABILITY",76.0],[Vector2(620,866),"parry","PARRY",65.0],[Vector2(425,1163),"burst","BREAK",65.0]]
 		if g.side: items.append([Vector2(615,1210),"jump","JUMP",53.0])
-		if not g.profile.data.auto_attack: items.append([Vector2(575,708),"melee","STRIKE",65.0])
+		if not g.profile.data.auto_attack: items.append([Vector2(620,866),"melee","STRIKE",65.0])
 	else:
 		items = [[Vector2(1110,551),"dodge","DODGE",68.0],[Vector2(971,448),"shoot","ABILITY",59.0],[Vector2(1165,394),"parry","PARRY",55.0],[Vector2(949,619),"burst","BREAK",53.0]]
 		if g.side: items.append([Vector2(814,534),"jump","JUMP",51.0])
-		if not g.profile.data.auto_attack: items.append([Vector2(835,380),"melee","STRIKE",52.0])
-	return items
+		if not g.profile.data.auto_attack: items.append([Vector2(1165,394),"melee","STRIKE",55.0])
+	return items.filter(func(item): return g.parry_enabled or item[1] != "parry")
 func stick_home() -> Vector2:
 	return Vector2(160,1060) if portrait else Vector2(205,540)
 func pause_rect() -> Rect2:
 	return Rect2(586,20,108,92) if portrait else Rect2(1130,22,110,92)
 func auto_rect() -> Rect2:
-	return Rect2(32,764,235,92) if portrait else Rect2(38,610,260,92)
+	return Rect2(16,12,120,80)
 func heading(g: Node2D,title: String,sub: String = "") -> void:
 	g.text_at("R / A · THUMB CONTROLS",Vector2(32,40),19,g.TEAL)
 	g.wrapped_text(title,Vector2(32,94),size().x-64,32,g.PAPER)
@@ -110,7 +110,7 @@ func draw_menu(g: Node2D) -> void:
 			heading(g,"TWO-THUMB GUIDE")
 			var rect = Rect2(32,180,656,890) if portrait else Rect2(56,180,1168,350)
 			g.draw_style_box(g.panel_style(Color("14212c"),g.TEAL),rect)
-			var instructions = "LEFT: drag anywhere in the left control area to move. Slide up to jump in platform view; slide down to drop through.\n\nRIGHT: tap DODGE, ABILITY or PARRY. Slide between buttons without lifting. Hold ABILITY to repeat. BREAK spends full resonance.\n\nAUTO ATTACK: basic strikes trigger when the boss is in reach. Horizon fires automatically at range while saving dodge energy. Turn AUTO off for a manual STRIKE button.\n\nGold warnings are safe. Active floor attacks need movement or dodging; round bullets can be parried."
+			var instructions = "LEFT: drag anywhere in the left control area to move. Slide up to jump in platform view; slide down to drop through.\n\nRIGHT: tap DODGE or ABILITY. Slide between buttons without lifting. Hold ABILITY to repeat. BREAK spends full resonance.\n\nAUTO ATTACK: basic strikes trigger when the boss is in reach. Horizon fires automatically at range while saving dodge energy. Turn AUTO off for a manual STRIKE button.\n\nGold warnings are safe. Active floor attacks need movement or dodging; dodge through incoming bullets."
 			var y = rect.position.y+38
 			for paragraph in instructions.split("\n\n"):
 				y = g.wrapped_text(paragraph,Vector2(rect.position.x+24,y),rect.size.x-48,23,g.MUTED)+16
@@ -118,8 +118,8 @@ func draw_menu(g: Node2D) -> void:
 func draw_combat(g: Node2D) -> void:
 	g.draw_arena()
 	var width = size().x
-	g.text_at(g.bosses[g.boss_index].name,Vector2(30,42),25,g.PAPER)
-	g.text_at("TUTORIAL" if g.tutorial_active else "MOVEMENT %02d" % (g.boss_index+1),Vector2(30,75),19,g.MUTED)
+	g.text_at(g.bosses[g.boss_index].name,Vector2(150,42),25,g.PAPER)
+	g.text_at("TUTORIAL" if g.tutorial_active else "MOVEMENT %02d" % (g.boss_index+1),Vector2(150,75),19,g.MUTED)
 	g.bar(Rect2(30,92,width-180,12),g.boss_hp/g.max_hp,Color(g.bosses[g.boss_index].color))
 	g.text_at("HP %d" % g.hp,Vector2(30,145),23,g.CORAL)
 	g.bar(Rect2(128,130,160 if portrait else 230,14),g.hp/g.run.stat("health"),g.CORAL)
@@ -134,7 +134,7 @@ func draw_combat(g: Node2D) -> void:
 		var w = 656 if portrait else 570
 		g.draw_style_box(g.panel_style(Color("101e29"),g.TEAL),Rect2(x,y-28,w,150 if portrait else 132))
 		var next = g.wrapped_text("%d / 8 · %s" % [g.tutorial.step+1,lesson.title],Vector2(x+15,y),w-30,23,g.TEAL)
-		var hint: String = ["Drag the LEFT stick into the checkpoint.","Approach the boss. Land three AUTO strikes.","Tap ABILITY with your RIGHT thumb.","Move toward the shot and tap DODGE.","Tap PARRY just before the shot arrives.","Tap the gold BREAK button.","Flick the LEFT stick up, or tap JUMP.","Keep moving. Dodge, use skills and attack."][g.tutorial.step]
+		var hint: String = ["Drag the LEFT stick into the checkpoint.","Approach the boss. Land three AUTO strikes.","Tap ABILITY with your RIGHT thumb.","Move toward the shot and tap DODGE.","Close in. Land two strikes to recover energy.","Tap the gold BREAK button.","Flick the LEFT stick up, or tap JUMP.","Keep moving. Dodge, use skills and attack."][g.tutorial.step]
 		if g.tutorial.step == 1 and not g.profile.data.auto_attack: hint = "Hold STRIKE to land three melee hits."
 		g.wrapped_text(hint if portrait else lesson.goal,Vector2(x+15,next+8),w-30,24)
 		if not portrait: g.text_at(hint,Vector2(335,321),21,g.TEAL)
@@ -160,7 +160,9 @@ func draw_controls(g: Node2D) -> void:
 		var text_width = g.font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,fontsize).x
 		g.text_at(label,item[0]+Vector2(-text_width/2,8),fontsize,color if ready else g.MUTED)
 		if action == "burst": g.draw_arc(item[0],item[3]-8,-PI/2,-PI/2+TAU*g.resonance/100,48,g.GOLD,4,true)
-	button(g,"AUTO: "+("ON" if g.profile.data.auto_attack else "OFF"),auto_rect(),"phone_auto",g.profile.data.auto_attack)
+	var face = Rect2(24,22,104,52)
+	g.draw_style_box(g.panel_style(Color("20332e") if g.profile.data.auto_attack else Color("202b37"),g.TEAL if g.profile.data.auto_attack else g.MUTED),face)
+	g.text_at("AUTO "+("ON" if g.profile.data.auto_attack else "OFF"),face.position+Vector2(9,33),18,g.TEAL if g.profile.data.auto_attack else g.MUTED)
 func draw_overlay(g: Node2D) -> void:
 	g.draw_rect(Rect2(Vector2.ZERO,size()),Color(.02,.035,.055,.95))
 	match g.screen:

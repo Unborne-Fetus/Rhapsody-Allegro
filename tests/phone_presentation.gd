@@ -13,7 +13,7 @@ func capture_all() -> void:
 		game.configure_phone(); var tag = "portrait-" if portrait else "landscape-"
 		for screen in ["title","loadout","arsenal","select","settings","help","intermission"]:
 			game.command("menu"); game.screen = screen; game.phone.boss_focus = 6
-			game.upgrade_options = [game.RunState.UPGRADES[3],game.RunState.UPGRADES[7],game.RunState.UPGRADES[4]]
+			game.upgrade_options = [game.RunState.UPGRADES[1],game.RunState.UPGRADES[7],game.RunState.UPGRADES[4]]
 			await capture(tag+screen)
 		game.command("menu"); game.practice = true; game.training = false; game.start_fight(5); game.banner_time = 0; game.aim_snapshot = game.player
 		game.execute_pattern("dancefloor"); game.execute_pattern("six_step")

@@ -19,11 +19,11 @@ func run_tests() -> void:
 			check(choices[0].id != choices[1].id and choices[0].id != choices[2].id and choices[1].id != choices[2].id,"Upgrade choices unique")
 			run.upgrades.append(choices[0].id)
 			check(run.choices(boss).all(func(u): return u.id != choices[0].id),"Owned upgrades excluded")
-	for u in game.RunState.UPGRADES:
+	for u in game.RunState.active_upgrades():
 		if not run.has(u.id): run.upgrades.append(u.id)
 	check(run.choices(0).is_empty(),"Exhausted upgrades safe")
 	check(run.stat("health") == 125 and run.stat("energy") == 125,"Capacity upgrades")
-	check(run.stat("dodge_cost") == 18 and run.stat("parry")>0.2,"Dodge and parry upgrades")
+	check(run.stat("dodge_cost") == 18 and run.stat("dodge_cd") == 0.36,"Dodge upgrades")
 	var snapshot = run.snapshot(2,true)
 	var restored = game.RunState.new()
 	check(restored.restore(snapshot) and restored.upgrades == run.upgrades and restored.assisted,"Checkpoint round trip")
@@ -64,7 +64,7 @@ func run_tests() -> void:
 	game.jump()
 	check(game.velocity.y<0,"Jump works on elevated platform")
 	game.ground_grace = 0.08; game.player.y = 420; game.jump()
-	check(game.velocity.y == -570,"Coyote-time jump")
+	check(game.velocity.y == -740,"Coyote-time jump")
 	game.start_run(); game.damage_boss(9999)
 	check(game.screen == "clear" and game.run.score>0,"Boss clear tallies run score")
 	var first_score = game.run.score

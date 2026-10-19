@@ -1,5 +1,6 @@
 extends Node2D
 ## One simulation for native and browser. Presentation uses resolution-independent vector art.
+const CombatRules = preload("res://scripts/combat_rules.gd")
 const PhoneUI = preload("res://scripts/phone_ui.gd")
 const SongBosses = preload("res://scripts/song_bosses.gd")
 const Encounters = preload("res://scripts/encounters.gd")
@@ -20,6 +21,7 @@ const TEAL := Color("74ead5")
 const CORAL := Color("ef7854")
 const GOLD := Color("e8c575")
 const FIELD := Rect2(100,164,1080,440)
+var parry_enabled := CombatRules.PARRY_ENABLED
 var phone = PhoneUI.new()
 var phone_mode := false
 var phone_jump_held := false
@@ -419,7 +421,7 @@ func jump() -> void:
 	if not side: return
 	jump_buffer = 0.12
 	if ground_grace>0 or player.y>=550:
-		velocity.y = -570; ground_grace = 0; jump_buffer = 0; jump_cut = false
+		velocity.y = -CombatRules.JUMP_SPEED; ground_grace = 0; jump_buffer = 0; jump_cut = false
 		sound.tone(310,0.07)
 
 func dodge() -> void:
@@ -450,7 +452,7 @@ func melee() -> void:
 	var dash_strike = dash_time>0
 	melee_snapshot = weapon.duplicate(true)
 	melee_snapshot["power"] = (float(weapon.dash_damage) if dash_strike else float(weapon.melee_damage[step]))*run.stat("melee")
-	if weapon_index == 2 and riposte_time>0: melee_snapshot.power *= 1.5; riposte_time = 0
+	if parry_enabled and weapon_index == 2 and riposte_time>0: melee_snapshot.power *= 1.5; riposte_time = 0
 	melee_snapshot["reach"] = float(weapon.dash_range) if dash_strike else float(weapon.melee_range[step])
 	melee_snapshot["facing"] = facing
 	melee_snapshot["step"] = combo
@@ -471,7 +473,7 @@ func shoot() -> void:
 	if weapon_index != 3:
 		var attack = Arsenal.SETS[weapon_index].duplicate(true)
 		attack["power"] = float(character.power)*run.stat("ranged")
-		if weapon_index == 2 and riposte_time>0: attack.power *= 1.5; riposte_time = 0
+		if parry_enabled and weapon_index == 2 and riposte_time>0: attack.power *= 1.5; riposte_time = 0
 		attack["reach"] = float(character.reach); attack["facing"] = aim
 		attack["arc"] = PI if weapon_index == 0 else 1.4
 		attack["step"] = 1; attack["dash"] = weapon_index == 1; attack["skill"] = true
@@ -479,7 +481,7 @@ func shoot() -> void:
 		melee_snapshot = attack; active_melee = attack.duplicate(true); melee_windup = float(character.windup)
 		if weapon_index == 1:
 			dash_dir = aim; dash_time = 0.08; invincible = maxf(invincible,0.08)
-		if weapon_index == 2: parry_time = maxf(parry_time,0.28)
+		if parry_enabled and weapon_index == 2: parry_time = maxf(parry_time,0.28)
 		return
 	if shots.size()>=340: return
 	var weapon: Dictionary = Arsenal.SETS[3]
@@ -490,6 +492,7 @@ func shoot() -> void:
 	sound.tone(740,0.045,0.06)
 
 func parry() -> void:
+	if not parry_enabled: return
 	if parry_cd>0: return
 	parry_time = run.stat("parry")
 	parry_cd = 0.85
@@ -593,7 +596,7 @@ func simulate(delta: float) -> void:
 		if melee_windup<=0: resolve_melee()
 	if screen != "playing": return
 	training_window = training_window.filter(func(hit): return elapsed-float(hit.time)<=5.0)
-	energy = minf(run.stat("energy"),energy+delta*float(Characters.ROSTER[weapon_index].regen))
+	if not tutorial_active or tutorial.step != 4: energy = minf(run.stat("energy"),energy+delta*float(Characters.ROSTER[weapon_index].regen))
 	riposte_time = maxf(0,riposte_time-delta)
 	update_bleed(delta)
 	if screen != "playing": return
@@ -661,7 +664,7 @@ func simulate(delta: float) -> void:
 				shot.life = 0; emit_sparks(shot.position,TEAL,3); gain_resonance(shot.damage*0.08); add_style("fire",shot.damage*0.08); add_stagger(shot.damage*0.06)
 		else:
 			if shot.intersects(player,14):
-				if parry_time>0:
+				if parry_enabled and parry_time>0:
 					shot.friendly = weapon_index == 3
 					if weapon_index != 3: shot.life = 0
 					if weapon_index == 2: riposte_time = 1.5
@@ -831,7 +834,7 @@ func _draw() -> void:
 
 func draw_menu() -> void:
 	text_at("R / A",Vector2(58,62),22,TEAL)
-	text_at("SONG ENCOUNTERS  /  0.5",Vector2(896,59),14,MUTED)
+	text_at("MOVEMENT UPDATE  /  0.6.1",Vector2(896,59),14,MUTED)
 	line(Vector2(58,82),Vector2(1222,82),Color("293340"))
 	if screen == "title":
 		text_at("A HYBRID-PERSPECTIVE BOSS RUSH",Vector2(94,157),16,TEAL)
@@ -948,10 +951,10 @@ func draw_menu() -> void:
 			["MOVE / DODGE","WASD or arrows · Space to dodge through danger. A close dodge builds resonance."],
 			["STRIKE / DASH STRIKE","Hold K or click left mouse. Heavy attacks wind up; dodge cancels them without refunding recovery."],
 			["FOUR CHARACTERS","Choose before a run. Q inspects your character. Only Lyra shoots; J uses each character ability."],
-			["PARRY / RESONANCE","L parries projectiles. Only Lyra reflects them. E spends 100 resonance on a damaging break."],
-			["STAGGER / STYLE","Mix blade hits, ranged fire and parries. Fill stagger to open a +30% damage window."],
+			["RESONANCE BREAK","Attacks and perfect dodges earn resonance. E spends 100 on a damaging break."],
+			["STAGGER / STYLE","Mix blade hits, abilities and ranged fire. Fill stagger to open a +30% damage window."],
 			["FORM SHIFTS","Boss health thresholds change perspective. W jumps in side view; S drops through platforms."],
-			["CONTROLLER / TOUCH","Pad: X strike, RT ability, A dodge, LB parry, Y burst, B inspect, D-pad up jump. Touch has labeled buttons."]
+			["CONTROLLER / TOUCH","Pad: X strike, RT ability, A dodge, Y burst, B inspect, D-pad up jump. Touch has labeled buttons."]
 		]
 		for i in entries.size():
 			var y = 215+i*55
@@ -1056,7 +1059,7 @@ func draw_player() -> void:
 	draw_circle(player+Vector2(0,-17),8,Color("dfdfd1"))
 	line(player+Vector2(-6,-18),player+Vector2(6,-18),INK,3)
 	draw_equipped_weapon()
-	if parry_time>0: draw_circle(player,34,GOLD,false,4,true)
+	if parry_enabled and parry_time>0: draw_circle(player,34,GOLD,false,4,true)
 	if dash_time>0: line(player-dash_dir*55,player,Color(TEAL,0.6),5)
 
 func draw_hud() -> void:
@@ -1077,17 +1080,17 @@ func draw_hud() -> void:
 	bar(Rect2(370,650,190,7),energy/run.stat("energy"),TEAL)
 	text_at("RESONANCE"+ ("  /  E TO BREAK" if resonance>=100 else ""),Vector2(590,638),14,GOLD)
 	bar(Rect2(590,650,290,7),resonance/100,GOLD)
-	text_at("PARRY READY" if parry_cd<=0 else "PARRY %.1f" % parry_cd,Vector2(930,692 if used_touch else 638),14,MUTED)
+	text_at("DODGE READY" if dash_cd<=0 else "DODGE %.1f" % dash_cd,Vector2(930,692 if used_touch else 638),14,MUTED)
 	bar(Rect2(930,702 if used_touch else 650,105,5),1.0-dash_cd/run.stat("dodge_cd"),TEAL)
 	text_at("ASSIST" if profile.data.assist else RunState.DIFFICULTIES[run.difficulty].name,Vector2(1060,659),12,TEAL if profile.data.assist else MUTED)
 	if not used_touch:
-		centered("K / LMB STRIKE · J / RMB ABILITY · Q INSPECT · SPACE DODGE · L PARRY · E BURST · H HELP · ESC PAUSE",701,13,MUTED)
+		centered("K / LMB STRIKE · J / RMB ABILITY · Q INSPECT · SPACE DODGE · E BURST · H HELP · ESC PAUSE",701,13,MUTED)
 	bar(Rect2(124,133,1032,3),1.0 if stagger_time>0 else stagger/100.0,GOLD)
 	var grade = "S" if style>=80 else ("A" if style>=55 else ("B" if style>=30 else "C"))
 	text_at("STYLE "+grade+"  /  %d" % fight_score,Vector2(120,157),13,GOLD)
 	text_at("STAGGERED" if stagger_time>0 else "STAGGER",Vector2(1057,153),11,GOLD)
 	if not training and not tutorial_active:
-		if riposte_time>0: text_at("RIPOSTE READY",Vector2(800,153),12,GOLD)
+		if parry_enabled and riposte_time>0: text_at("RIPOSTE READY",Vector2(800,153),12,GOLD)
 		elif bleed_stacks>0: text_at("BLEED x%d" % bleed_stacks,Vector2(800,153),12,CORAL)
 	if boss_index>=3 and not training and not tutorial_active:
 		var encounter: Dictionary = bosses[boss_index]
@@ -1103,7 +1106,7 @@ func draw_hud() -> void:
 		draw_rect(Rect2(200,284,880,78),Color(0.03,0.05,0.08,0.93))
 		centered(banner,330,22,TEAL)
 	elif elapsed<14 and screen == "playing" and not used_touch and not training and boss_index<3:
-		centered("Melee restores energy. Gold parry blocks projectiles. Mix actions to build stagger and style.",678,12,GOLD)
+		centered("Melee restores energy. Mix actions to build stagger and style.",678,12,GOLD)
 	if training:
 		draw_rect(Rect2(114,198,326,61),Color(INK,0.9))
 		text_at("TOTAL %d  ·  HITS %d  ·  LAST %.0f" % [int(training_damage),training_hit_count,training_last_hit],Vector2(125,221),13,TEAL)
@@ -1139,13 +1142,13 @@ func draw_overlay() -> void:
 			text_at("ENCOUNTER NOTES",Vector2(890,349),14,GOLD)
 			var y = wrapped_text(encounter.song+" · "+encounter.artist,Vector2(890,378),290,16)
 			y = wrapped_text(encounter.mechanic,Vector2(890,y+14),290,14,TEAL)
-			wrapped_text(encounter.tip+" Gold warnings are safe. Round projectiles can be parried.",Vector2(890,y+12),290,14,MUTED)
+			wrapped_text(encounter.tip+" Gold warnings are safe. Dodge through incoming attacks.",Vector2(890,y+12),290,14,MUTED)
 		if training:
 			button("ATTACKS "+("ON" if training_attacks else "OFF"),Rect2(90,390,285,48),"training_attacks")
 			button("SWITCH PERSPECTIVE",Rect2(90,454,285,48),"training_view")
 	elif screen == "tutorial_clear":
 		centered("FIRST NOTES COMPLETE",252,39,TEAL)
-		centered("Movement, strikes, abilities, dodging, parrying, resonance and form shifts.",302,18,MUTED)
+		centered("Movement, strikes, abilities, dodging, energy, resonance and form shifts.",302,18,MUTED)
 		centered("Your first real performance awaits.",350,23)
 		button("CHOOSE A PERFORMANCE",Rect2(440,410,400,54),"start",true)
 		button("TITLE SCREEN",Rect2(440,485,400,48),"menu")
@@ -1161,7 +1164,7 @@ func draw_overlay() -> void:
 		centered(bosses[boss_index].name+"  /  SILENCED",291,20,MUTED)
 		var rank = "S" if hits == 0 else ("A" if hits<=3 else ("B" if hits<=6 else "C"))
 		centered("%s     %.1fs     %d HITS" % [rank,elapsed,hits],364,34)
-		centered("%d PARRIES  /  %d PERFECT DODGES  /  SCORE %d" % [parries,perfect_dodges,fight_score],400,16,TEAL)
+		centered("%d PERFECT DODGES  /  SCORE %d" % [perfect_dodges,fight_score],400,16,TEAL)
 		button("CHOOSE AUGMENTATION" if boss_index<bosses.size()-1 and not practice else "RETURN TO TITLE",Rect2(450,445,380,54),"next",true)
 		button("PLAY AGAIN",Rect2(450,516,380,48),"retry")
 		centered("PERFORMANCE TOTAL  %d  /  %.1fs  /  %d HITS" % [run.score,run.time,run.hits],608,18,GOLD)
@@ -1245,7 +1248,7 @@ func touch_layout() -> Array:
 		layout.append([Vector2(700,215),"view","VIEW"])
 		layout.append([Vector2(800,215),"ranges","RANGE"])
 		layout.append([Vector2(900,215),"reset_stats","RESET"])
-	return layout
+	return layout.filter(func(item): return parry_enabled or item[1] != "parry")
 
 func draw_architecture(color: Color) -> void:
 	if boss_index>=3:
@@ -1382,7 +1385,8 @@ func resolve_melee() -> void:
 		add_stagger(float(attack.stagger)*finisher*(0.8 if weapon_index == 2 and not attack.get("skill",false) else 1.0))
 		add_style("dash strike" if attack.dash else "blade",float(attack.resonance))
 		if run.has("siphon"): hp = minf(run.stat("health"),hp+float(attack.power)*0.05)
-		energy = minf(run.stat("energy"),energy+float(attack.energy_return))
+		var recovery_bonus = 8.0 if weapon_index == 2 and not parry_enabled and int(attack.step) == 3 and not attack.get("skill",false) else 0.0
+		energy = minf(run.stat("energy"),energy+float(attack.energy_return)+recovery_bonus)
 		hit_stop = 0.0 if attack.shape == "knives" else minf(0.065,float(attack.flash)*0.22)
 		emit_sparks(boss,Color(attack.color),18 if attack.shape == "hammer" else 8)
 		sound.tone(170+int(attack.step)*60+weapon_index*65,0.12 if attack.shape == "hammer" else 0.05)
@@ -1458,7 +1462,7 @@ func setup_tutorial_stage() -> void:
 	melee_windup = 0; melee_flash = 0; melee_cd = 0; shoot_cd = 0
 	bleed_time = 0; bleed_stacks = 0; bleed_tick = 0.5; charge_time = 0; windup = 0
 	followup_delay = 0; followup_pattern = ""; attack_timer = 1.8
-	hp = run.stat("health"); energy = run.stat("energy"); invincible = 1.0
+	hp = run.stat("health"); energy = 25.0 if tutorial.step == 4 else run.stat("energy"); invincible = 1.0
 	resonance = 100 if tutorial.step == 5 else 0
 	dash_cd = 0; dash_time = 0; parry_cd = 0; parry_time = 0
 	side = tutorial.step == 6; velocity = Vector2.ZERO
@@ -1466,7 +1470,8 @@ func setup_tutorial_stage() -> void:
 	boss = Vector2(760,515 if side else 420)
 	max_hp = 480 if tutorial.step == 7 else 900; boss_hp = max_hp
 	phase = 0; banner_time = 0; tutorial_shot_timer = 1.2
-	if tutorial.step in [3,4]: player = Vector2(640,440)
+	if tutorial.step == 3: player = Vector2(640,440)
+	if tutorial.step == 4: player = Vector2(400,440)
 	if tutorial.step == 7: player = Vector2(340,440); boss = Vector2(850,380)
 	if phone_mode and phone.portrait: update_phone_camera(1)
 
@@ -1478,7 +1483,7 @@ func update_tutorial(delta: float) -> void:
 		setup_tutorial_stage()
 	if tutorial.step == 0 and Rect2(900,470,130,100).has_point(player): tutorial.event("checkpoint")
 	if tutorial.step == 6 and player.x>=300 and player.x<=490 and absf(player.y-450)<2 and ground_grace>0: tutorial.event("platform")
-	if tutorial.step in [3,4] and tutorial.transition<=0:
+	if tutorial.step == 3 and tutorial.transition<=0:
 		tutorial_shot_timer -= delta
 		if tutorial_shot_timer<=0:
 			tutorial_shot_timer = 1.8
