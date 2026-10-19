@@ -6,9 +6,9 @@ echo No administrator installation or GitHub Actions is required.
 echo The first build downloads the official Godot 4.5.1 editor and export templates.
 echo.
 if /I "%~1"=="FAST" (
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\portable_godot.ps1" -Mode build -SkipTests
+  powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "%~dp0tools\portable_godot.ps1" -Mode build -SkipTests
 ) else (
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\portable_godot.ps1" -Mode build
+  powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "%~dp0tools\portable_godot.ps1" -Mode build
 )
 if errorlevel 1 (
   echo.
