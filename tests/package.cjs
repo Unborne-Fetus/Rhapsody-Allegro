@@ -19,6 +19,8 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
  vm.runInNewContext(loader,bad);
  await assert.rejects(bad.window.fetch('https://example.test/rhapsody/index.wasm'),/Engine download failed/);
  assert(!fs.readdirSync('dist').some(name=>name.startsWith('.index.') || name.endsWith('.import') || name.includes('.pck-')),'temporary export files must not be shipped');
+ assert(html.includes('viewport-fit=cover') && html.includes('safe-area-inset-left') && html.includes('100dvh'),'phone viewport respects safe areas and browser bars');
+ assert(html.includes('rhapsodyFullscreen') && html.includes('wakeLock'),'phone browser helpers bundled');
  const largest=Math.max(...fs.readdirSync('dist').filter(x=>x.endsWith('.bin')).map(x=>fs.statSync('dist/'+x).size));
  assert(largest<=25*1024*1024);
  console.log('Split-engine loader: byte-identical, valid WASM, correct MIME, host size limits PASS');

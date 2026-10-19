@@ -1,5 +1,6 @@
 extends Node2D
 ## One simulation for native and browser. Presentation uses resolution-independent vector art.
+const PhoneUI = preload("res://scripts/phone_ui.gd")
 const SongBosses = preload("res://scripts/song_bosses.gd")
 const Encounters = preload("res://scripts/encounters.gd")
 const Profile = preload("res://scripts/profile.gd")
@@ -19,6 +20,11 @@ const TEAL := Color("74ead5")
 const CORAL := Color("ef7854")
 const GOLD := Color("e8c575")
 const FIELD := Rect2(100,164,1080,440)
+var phone = PhoneUI.new()
+var phone_mode := false
+var phone_jump_held := false
+var arena_origin := Vector2.ZERO
+var arena_scale := 1.0
 var songs = SongBosses.new()
 var boss_page := 0
 var run = RunState.new()
@@ -152,7 +158,11 @@ func _ready() -> void:
 	apply_volume()
 	print("RHAPSODY_BOOT_READY")
 	rng.seed = 91428
-	get_viewport().size_changed.connect(queue_redraw)
+	phone_mode = DisplayServer.is_touchscreen_available() or OS.has_feature("android") or OS.has_feature("ios")
+	if OS.has_feature("web"):
+		phone_mode = bool(JavaScriptBridge.eval("navigator.maxTouchPoints > 0 && (matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent))"))
+	get_viewport().size_changed.connect(configure_phone)
+	configure_phone()
 	if "--smoke" in OS.get_cmdline_user_args():
 		start_fight(0)
 		print("RHAPSODY_READY bosses=",bosses.size()," screen=",screen)
@@ -221,6 +231,10 @@ func _input(event: InputEvent) -> void:
 			elif event.position.distance_to(Vector2(1190,92)) < 35: screen = "paused"; clear_touch()
 			else: melee()
 		elif event.button_index == MOUSE_BUTTON_RIGHT and screen == "playing": get_viewport().set_input_as_handled()
+	if event is InputEventScreenTouch and phone_mode:
+		phone_touch(event); return
+	if event is InputEventScreenDrag and phone_mode:
+		phone_drag(event); return
 	if event is InputEventScreenTouch:
 		used_touch = true; ui_mouse_active = false
 		if event.pressed:
@@ -241,12 +255,10 @@ func _input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and screen == "playing":
 		screen = "paused"
-		touch_actions.clear()
-		touch_move = Vector2.ZERO
-		move_finger = -1
+		clear_touch()
 
 func click_ui(p: Vector2) -> void:
-	if screen == "intermission": inspect_upgrade_at(p)
+	if screen == "intermission" and not phone_mode: inspect_upgrade_at(p)
 	for button in buttons:
 		if button.rect.has_point(p):
 			command(button.action)
@@ -256,6 +268,18 @@ func command(action: String) -> void:
 	sound.tone(440,0.05)
 	menu_focus = -1
 	match action:
+		"phone_noop": return
+		"phone_pause": screen = "paused"; clear_touch()
+		"phone_auto": profile.data.auto_attack = not profile.data.auto_attack; profile.save_profile()
+		"phone_fullscreen":
+			if OS.has_feature("web"): JavaScriptBridge.eval("window.rhapsodyFullscreen && window.rhapsodyFullscreen()")
+			else: DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		"phone_char_previous","phone_char_next":
+			var direction = 1 if action == "phone_char_next" else -1
+			if character_locked(): phone.character_focus = posmod(phone.character_focus+direction,4)
+			else: equip_set(posmod(int(profile.data.weapon)+direction,4),true)
+		"phone_boss_previous","phone_boss_next": phone.boss_focus = posmod(phone.boss_focus+(1 if action == "phone_boss_next" else -1),bosses.size())
+		"phone_songs": phone.boss_focus = 3
 		"start": screen = "loadout"
 		"resume": screen = "playing"; mouse_attack_latched = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 		"retry": restart_fight()
@@ -281,6 +305,7 @@ func command(action: String) -> void:
 		"pulse": metronome = not metronome
 		"close_help": screen = "playing"
 		_:
+			if action.begins_with("phone_inspect_"): upgrade_focus = clampi(int(action.trim_prefix("phone_inspect_")),0,upgrade_options.size()-1); return
 			if action.begins_with("page_"): boss_page = clampi(int(action.trim_prefix("page_")),0,1); return
 			if action.begins_with("set_"): equip_set(int(action.trim_prefix("set_")),true); return
 			if action.begins_with("level_"): profile.data.difficulty = clampi(int(action.trim_prefix("level_")),0,2); profile.save_profile(); return
@@ -322,7 +347,8 @@ func start_fight(index: int) -> void:
 	banner_time = 2.6
 	screen = "playing"
 	print("RHAPSODY_FIGHT_READY movement=",boss_index+1)
-	touch_actions.clear(); touch_move = Vector2.ZERO; move_finger = -1
+	if phone_mode and phone.portrait: update_phone_camera(1)
+	clear_touch()
 
 func advance() -> void:
 	if practice or boss_index >= bosses.size()-1: screen = "title"
@@ -539,6 +565,7 @@ func emit_sparks(p: Vector2,color: Color,count: int) -> void:
 		sparks.append({"p":p,"v":Vector2.RIGHT.rotated(rng.randf()*TAU)*rng.randf_range(40,270),"life":rng.randf_range(0.2,0.65),"color":color})
 
 func _process(raw_delta: float) -> void:
+	if phone_mode and phone.portrait: update_phone_camera(minf(raw_delta,0.04))
 	var delta = minf(raw_delta,0.04)
 	total_time += delta
 	gamepad_input()
@@ -608,6 +635,7 @@ func simulate(delta: float) -> void:
 	var pads = Input.get_connected_joypads()
 	if not pads.is_empty(): shooting = shooting or Input.get_joy_axis(pads[0],JOY_AXIS_TRIGGER_RIGHT)>0.25 or Input.is_joy_button_pressed(pads[0],JOY_BUTTON_RIGHT_SHOULDER)
 	if shooting: shoot()
+	if phone_mode and profile.data.auto_attack: phone_basic_attack()
 	if "melee" in touch_actions.values() or held(KEY_K) or (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not mouse_attack_latched): melee()
 	beat_timer += delta
 	if beat_timer>=0.5:
@@ -788,6 +816,8 @@ func bar(rect: Rect2,value: float,color: Color) -> void:
 
 func _draw() -> void:
 	buttons.clear()
+	if phone_mode:
+		phone.draw(self); return
 	draw_rect(Rect2(0,0,1280,720),INK)
 	for i in 36:
 		var x = float(i)*39+fmod(total_time*7,39)
@@ -945,7 +975,7 @@ func draw_arena() -> void:
 	var color = Color(bosses[boss_index].color)
 	var offset = Vector2.ZERO
 	if profile.data.shake and shake>0: offset = Vector2(sin(total_time*101),cos(total_time*91))*shake
-	draw_set_transform(offset)
+	draw_set_transform(arena_origin+offset*arena_scale,0,Vector2.ONE*arena_scale)
 	draw_rect(FIELD,Color("101a26"))
 	draw_architecture(color)
 	for x in range(100,1181,54): line(Vector2(x,164),Vector2(x,604),Color("1b2936"))
@@ -1137,7 +1167,7 @@ func draw_overlay() -> void:
 		centered("PERFORMANCE TOTAL  %d  /  %.1fs  /  %d HITS" % [run.score,run.time,run.hits],608,18,GOLD)
 
 func clear_touch() -> void:
-	touch_actions.clear(); touches.clear(); touch_move = Vector2.ZERO; move_finger = -1
+	touch_actions.clear(); touches.clear(); touch_move = Vector2.ZERO; move_finger = -1; phone_jump_held = false
 
 func start_run() -> void:
 	tutorial_active = false
@@ -1394,6 +1424,7 @@ func draw_equipped_weapon() -> void:
 
 func open_panel(panel: String) -> void:
 	if screen == panel: return
+	if panel == "arsenal": phone.character_focus = weapon_index
 	menu_history.append(screen)
 	settings_from = screen; screen = panel
 	menu_focus = -1
@@ -1437,6 +1468,7 @@ func setup_tutorial_stage() -> void:
 	phase = 0; banner_time = 0; tutorial_shot_timer = 1.2
 	if tutorial.step in [3,4]: player = Vector2(640,440)
 	if tutorial.step == 7: player = Vector2(340,440); boss = Vector2(850,380)
+	if phone_mode and phone.portrait: update_phone_camera(1)
 
 func update_tutorial(delta: float) -> void:
 	if tutorial.tick(delta):
@@ -1502,3 +1534,91 @@ func draw_character_portrait(p: Vector2,index: int) -> void:
 	elif index == 1: poly_at(p,[Vector2(-18,-24),Vector2(0,-48),Vector2(18,-24)],1,c)
 	elif index == 2: line(p+Vector2(20,4),p+Vector2(43,-33),c,5)
 	else: draw_arc(p+Vector2(0,-26),19,PI,TAU,20,c,5,true); line(p+Vector2(15,15),p+Vector2(47,-2),c,5)
+
+func configure_phone() -> void:
+	if phone_mode:
+		var physical = get_tree().root.size
+		phone.portrait = physical.y>physical.x
+		var logical = Vector2i(720,1280) if phone.portrait else Vector2i(1280,720)
+		if get_tree().root.content_scale_size != logical:
+			if screen == "playing": screen = "paused"
+			clear_touch()
+			get_tree().root.content_scale_size = logical
+		used_touch = true
+	arena_scale = 0.62 if phone_mode and phone.portrait else 1.0
+	arena_origin = Vector2(-36,120) if phone_mode and phone.portrait else Vector2.ZERO
+	if phone_mode and phone.portrait: update_phone_camera(1.0)
+	if is_instance_valid(hazard_view):
+		var clip = hazard_view.get_parent()
+		clip.position = arena_origin+FIELD.position*arena_scale
+		clip.scale = Vector2.ONE*arena_scale
+	queue_redraw()
+
+func phone_touch(event: InputEventScreenTouch) -> void:
+	used_touch = true; ui_mouse_active = false
+	if not event.pressed or event.canceled:
+		touches.erase(event.index); touch_actions.erase(event.index)
+		if event.index == move_finger: move_finger = -1; touch_move = Vector2.ZERO; phone_jump_held = false
+		return
+	if screen != "playing": click_ui(event.position); return
+	if phone.pause_rect().has_point(event.position): command("phone_pause"); return
+	if phone.auto_rect().has_point(event.position): command("phone_auto"); return
+	touches[event.index] = event.position
+	if event.position.x<phone.size().x/2 and event.position.y>(740 if phone.portrait else 300) and move_finger == -1:
+		move_finger = event.index
+		touch_origin = event.position.clamp(phone.stick_home()-Vector2(80,65),phone.stick_home()+Vector2(80,65))
+		update_phone_stick(event.position)
+	else: route_phone_action(event.index,event.position)
+
+func phone_drag(event: InputEventScreenDrag) -> void:
+	if screen != "playing" or not touches.has(event.index): return
+	touches[event.index] = event.position
+	if event.index == move_finger: update_phone_stick(event.position)
+	else: route_phone_action(event.index,event.position)
+
+func update_phone_stick(p: Vector2) -> void:
+	var radius = 95.0 if phone.portrait else 75.0
+	var input = (p-touch_origin).limit_length(radius)/radius
+	touch_move = Vector2.ZERO if input.length()<0.14 else input
+	if side and input.y< -0.72 and not phone_jump_held: jump(); phone_jump_held = true
+	if input.y> -0.25: phone_jump_held = false
+
+func route_phone_action(index: int,p: Vector2) -> void:
+	var selected := ""
+	var best := INF
+	for item in phone.controls(self):
+		var distance = p.distance_to(item[0])/float(item[3])
+		if distance<=1.10 and distance<best: best = distance; selected = item[1]
+	if selected == touch_actions.get(index,""): return
+	touch_actions.erase(index)
+	if selected.is_empty(): return
+	touch_actions[index] = selected
+	match selected:
+		"shoot": shoot()
+		"melee": melee()
+		"dodge": dodge()
+		"parry": parry()
+		"burst": burst()
+		"jump": jump()
+
+func phone_basic_attack() -> void:
+	if screen != "playing" or dash_time>0 or not melee_snapshot.is_empty(): return
+	var distance = player.distance_to(boss)
+	var weapon: Dictionary = Arsenal.SETS[weapon_index]
+	if distance<=float(weapon.melee_range[0])-4:
+		melee()
+	elif weapon_index == 3 and distance<=float(weapon.range)-25 and energy>=run.stat("dodge_cost")+float(Characters.ROSTER[3].cost):
+		if not tutorial_active or tutorial.step == 7: shoot()
+
+func update_phone_camera(delta: float) -> void:
+	if not phone_mode or not phone.portrait: return
+	var span = absf(player.x-boss.x)
+	var target_scale = clampf(660.0/(span+160.0),0.62,0.95)
+	arena_scale = target_scale if target_scale<arena_scale else lerpf(arena_scale,target_scale,minf(1,delta*5))
+	var focus = (player.x+boss.x)/2.0
+	var target_origin = Vector2(360-focus*arena_scale,190-164*arena_scale)
+	arena_origin = target_origin
+	if is_instance_valid(hazard_view):
+		var clip = hazard_view.get_parent()
+		clip.position = arena_origin+FIELD.position*arena_scale
+		clip.scale = Vector2.ONE*arena_scale

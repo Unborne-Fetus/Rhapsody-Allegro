@@ -1,6 +1,6 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.5** adds four song-inspired encounters to the existing three-boss roster, with a seven-movement campaign and direct practice access. The tutorial, locked character kits and contextual upgrade explanations remain.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.6** adds a phone interface designed for two thumbs: larger controls, optional automatic basic attacks, portrait menus and an adaptive portrait arena camera. The seven-boss campaign, song encounters and fixed character kits remain.
 
 **[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
@@ -14,6 +14,14 @@ A Godot action boss rush that changes between top-down and side-scrolling combat
 - **Seven-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
 - **Training:** immortal dummy, optional attacks, manual perspective changes, range guides and damage / DPS readouts. Select a character before entering.
 - **Keyboard, mouse, controller and multitouch:** aspect-preserving scaling, portrait letterboxing, focus-loss pause, configurable volume, shake, flashes and assist mode.
+
+## Play with two thumbs
+
+Phones automatically get a dedicated interface in portrait or landscape. The left control area is a floating movement stick. In side view, flick it upward to jump and downward to drop through platforms; a right-side JUMP button is also available. The right thumb can slide between large DODGE, ABILITY and PARRY buttons without lifting. Holding ABILITY repeats it; BREAK spends full resonance.
+
+**AUTO starts enabled on phones.** Basic melee attacks trigger only when the boss is within reach. Horizon also fires automatically from range while preserving enough energy for a dodge. Abilities, dodges, parries and breaks remain manual. Tap AUTO to disable it and expose a manual STRIKE button; the setting persists. Auto attack uses the same damage, windups, cooldowns, energy and collision rules as manual input.
+
+Portrait has large menu cards, a separate lower control area and a camera that frames both fighters. Landscape gives the arena more space. Rotating the phone pauses a fight and clears held input. Upgrade cards use a large inspection list plus a separate confirmation button. The tutorial includes thumb-specific instructions. Safe-area padding keeps browser controls away from notches and home indicators, page gestures are disabled on the canvas, and supported browsers can keep the screen awake. Fullscreen is optional in Settings.
 
 ## Song encounters
 
@@ -60,7 +68,7 @@ Mouse attacks aim at the pointer. Keyboard-only, controller and touch aim at the
 
 ## Build and develop
 
-Use **Godot 4.5.1 standard** with matching export templates. Import `project.godot` and press F5. `build.bat` runs all five regression suites and exports Web and Windows; set `GODOT` to your executable path if it is not on PATH.
+Use **Godot 4.5.1 standard** with matching export templates. Import `project.godot` and press F5. `build.bat` runs all six regression suites and exports Web and Windows; set `GODOT` to your executable path if it is not on PATH.
 
 ```sh
 godot --headless --editor --import --quit
@@ -69,6 +77,7 @@ godot --headless --script res://tests/advanced_test.gd
 godot --headless --script res://tests/input_test.gd
 godot --headless --script res://tests/weapon_test.gd
 godot --headless --script res://tests/song_boss_test.gd
+godot --headless --script res://tests/phone_test.gd
 mkdir -p build/web build/windows
 touch build/.gdignore
 godot --headless --export-release Web
@@ -84,12 +93,12 @@ The web packager preserves the actual engine bytes, splits them into assets belo
 
 ## Verification
 
-The five headless suites cover combat, progression, dispatched input, character/tutorial rules and song encounters. Stress simulation includes 24 minutes for the original roster and 36 minutes across every new boss, phase and difficulty. Native OpenGL captures verify the tutorial, character roster and upgrade references. Both release exports and the WebAssembly package are checked locally. A browser smoke test is included in CI; browser end-to-end testing is unavailable in this environment, so no successful browser playtest is claimed.
+The six headless suites cover combat, progression, dispatched input, character/tutorial rules and song encounters. Stress simulation includes 24 minutes for the original roster and 36 minutes across every new boss, phase and difficulty. Native OpenGL captures verify the tutorial, character roster, upgrade references, and phone menus / combat in both orientations. Both release exports and the WebAssembly package are checked locally. A browser smoke test is included in CI; browser end-to-end testing is unavailable in this environment, so no successful browser playtest is claimed.
 
 GitHub Actions builds Web and Windows artifacts and runs the browser smoke test. Optional GitHub Pages hosting uses `ENABLE_GITHUB_PAGES=true`; the private play link above is independent of Pages.
 
 ## Source
 
-`scripts/game.gd` owns encounter flow and interface. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `song_bosses.gd` owns the custom encounter mechanics, attacks and vector figures; `encounters.gd` provides shared roster bounds. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
+`scripts/game.gd` owns encounter flow and interface. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `phone_ui.gd` draws the thumb interface; phone routing and camera integration use the shared game simulation. `song_bosses.gd` owns the custom encounter mechanics, attacks and vector figures; `encounters.gd` provides shared roster bounds. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
 
 See [foundation notes](docs/FOUNDATION.md). No third-party art or recordings are bundled. Godot's engine and default font retain upstream licenses. No license for original game source has been granted yet.

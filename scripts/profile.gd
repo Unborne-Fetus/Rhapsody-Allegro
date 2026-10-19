@@ -4,7 +4,7 @@ const Encounters = preload("res://scripts/encounters.gd")
 const Arsenal = preload("res://scripts/weapons.gd")
 const PATH := "user://profile.json"
 var path := PATH
-var data: Dictionary = {"version":1,"unlocked":0,"best":{},"volume":0.6,"shake":true,"assist":false,"difficulty":0,"weapon":2,"tutorial_complete":false,"flashes":true,"checkpoint":{}}
+var data: Dictionary = {"version":1,"unlocked":0,"best":{},"volume":0.6,"shake":true,"assist":false,"difficulty":0,"weapon":2,"tutorial_complete":false,"auto_attack":true,"flashes":true,"checkpoint":{}}
 func load_profile() -> void:
 	if not FileAccess.file_exists(path): return
 	var parser = JSON.new()

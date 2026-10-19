@@ -1,4 +1,4 @@
-# Foundation, version 0.5
+# Foundation, version 0.6
 
 Rhapsody: Allegro uses one Godot simulation for browser and desktop. The prototype combines action boss fights with top-down / side-scrolling transitions. Combat has no required beat timing. Final art, story and soundtrack remain open for feedback.
 
@@ -35,3 +35,13 @@ The original indices 0–2 remain stable. Four song-inspired encounters are appe
 Cinder's four flame attacks trigger 3.8 seconds of immobility and +20% incoming damage; existing fire still resolves. Tyrant's three loud attacks trigger 3.4 seconds of immobility while existing soundwaves resolve. These openings use simulation time and pause with the game. Pattern pressure and wave count increase by phase; volleys also use difficulty speed and density. The parade's floor pattern preserves a completely clear column, and spotlight lanes have explicit gaps.
 
 See SONG_BOSSES.md for the concepts, attack catalog and source song attribution.
+
+## Phone interface
+
+Coarse touch devices select the phone interface at boot. Logical presentation is 1280×720 in landscape and 720×1280 in portrait. A portrait camera frames the player and boss horizontally, zooming out promptly when they separate and easing closer when they approach. The clipped hazard layer receives the identical arena transform. Combat simulation retains its original arena coordinates.
+
+Touch routing tracks the movement finger independently from right-thumb actions. Sliding into a new action activates it once; leaving the hit region clears held fire. Releasing or cancelling a touch, losing focus or rotating cannot leave a held action behind. Orientation changes pause encounters. Browser chrome changes within one orientation preserve thumb ownership. Menu actions use large targets and portrait cards.
+
+Phone auto attacks are an optional saved input preference, enabled by default. They call existing melee / rifle methods and never modify damage or timing. Rifle fire reserves dodge energy, and the tutorial's ability objective still requires a manual skill input. Basic melee auto attacks can satisfy its three-hit objective. The manual strike button appears when auto is disabled. Character selection locks remain enforced in every phone menu.
+
+Phone regressions dispatch simultaneous touch and drag events in both orientations, covering action slides, jump / drop gestures, target reach, auto rifle energy reserve, manual control, contextual upgrade confirmation, focus / rotation cleanup and camera alignment. Native phone captures use 390×844 and 844×390 windows. Browser-specific touch feel, audio, fullscreen and wake-lock behavior still require physical device testing.
