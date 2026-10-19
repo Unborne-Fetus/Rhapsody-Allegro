@@ -1,12 +1,18 @@
-# The Living Score — 0.8.0
+# The Living Score — 0.8.1 pixel performers
 
-All twelve bosses and four playable characters share a painted stage-fantasy atlas. Musical identities remain explicit: a percussion knight, glass opera singer and orchestral conductor lead the original trio. The nine song encounters retain their performer-inspired identities. Bram is a bell percussionist, Vex a punk violinist with bow-blades, Aria a concert violinist/duelist, and Lyra an electric guitarist with the only player rifle. Existing character stats and combat shapes remain intact.
+All twelve bosses retain their painted stage-fantasy atlas. The four playable characters now use a separate low-resolution sprite atlas. Musical identities remain explicit: a percussion knight, glass opera singer and orchestral conductor lead the original trio. The nine song encounters retain their performer-inspired identities. Bram is the heavy drummer, Vex the rapid bassist, Aria the balanced guitarist and Lyra the singer with the only player sound-wave projectiles. Existing character stats and combat shapes remain intact.
 
-`assets/performers-atlas.png` was generated with the built-in Image Generation tool and a second spacing pass. `scripts/stage_art.gd` maps fitted source rectangles to combat and menu portraits, keeping one image in memory. Idle motion, facing, movement bob and invulnerability opacity are runtime presentation. This is painted pose art, not a frame-by-frame animation set.
+`assets/performers-atlas.png` was generated with the built-in Image Generation tool and a second spacing pass. `scripts/stage_art.gd` maps fitted source rectangles to combat and menu portraits, keeping one image in memory. Idle motion, facing, movement bob and invulnerability opacity are runtime presentation. This remains painted pose art **for bosses only**. Playable musicians are frame-animated.
 
 ## Art prompt
 
 Create one transparent 4×4 production sprite atlas in cohesive detailed hand-painted dark-fantasy comic style. Full-body three-quarter performers with strong outlines, expressive faces, jewel-tone stage costumes and recognizable musical instruments. Row 1: brass metronome percussion knight, cyan glass opera diva with tuning fork, white-haired conductor with baton and sheet music, silver-haired Tom Jones in wine velvet. Row 2: Elvis in white rhinestones and red cape, Village People police-costume singer, Quiet Riot frontman with long curls and striped trousers, Weather Girls singing duo in blue/silver gowns. Row 3: Irene Cara in pink dancer stagewear, Nina Simone in gold headwrap and indigo gown with keyboard, Eddie Johns in gold disco tailoring and afro, Edwin Starr in olive/gold soul-stage suit. Row 4: bell-armored Bram, punk violinist Vex, concert-duelist Aria with violin and saber, electric guitarist Lyra with guitar-rifle. No text, backgrounds or grid lines. Spacing edit: preserve identities and designs while keeping subjects within their atlas cells.
+
+## Pixel playable-musician animations
+
+`assets/musicians.svg` is a transparent nearest-pixel-style atlas (1440 × 224), four rows of 40 × 56 pixel cells. Each character has 36 separate *poses* rather than translated duplicates: four frames for each of the four top-down directions, four side idle, six side run, four jump, four attack and two hurt. There are 144 individual keyframed poses across the four performers. The sprites have different faces, hairstyles, outfits and instrument silhouettes, and the cell layout can be retouched without changing engine logic.
+
+`scripts/pixel_performers.gd` selects the source rectangle according to facing, actual velocity, jump velocity, attack animation and hurt animation. `stage_art.gd` sends player and character-selection portraits to this atlas while retaining the original art for bosses. Damage/weapon balance and the 1.25-second projection bridge are unchanged. These are crisp pixel shapes represented as SVG so Godot can import them as a single atlas texture; no large painted image is scaled down to imitate pixel art.
 
 ## Original boss scores
 
