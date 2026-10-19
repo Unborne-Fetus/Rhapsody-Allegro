@@ -1,5 +1,7 @@
 extends Node2D
 ## One simulation for native and browser. Presentation uses resolution-independent vector art.
+const SongBosses = preload("res://scripts/song_bosses.gd")
+const Encounters = preload("res://scripts/encounters.gd")
 const Profile = preload("res://scripts/profile.gd")
 const Sound = preload("res://scripts/sound.gd")
 const Characters = preload("res://scripts/characters.gd")
@@ -17,6 +19,8 @@ const TEAL := Color("74ead5")
 const CORAL := Color("ef7854")
 const GOLD := Color("e8c575")
 const FIELD := Rect2(100,164,1080,440)
+var songs = SongBosses.new()
+var boss_page := 0
 var run = RunState.new()
 var profile = Profile.new()
 var fight_base_score := 0
@@ -132,7 +136,7 @@ var rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
-	bosses = JSON.parse_string(FileAccess.get_file_as_string("res://data/bosses.json"))
+	bosses = Encounters.roster()
 	profile.load_profile()
 	run.difficulty = int(profile.data.difficulty)
 	weapon_index = int(profile.data.weapon)
@@ -277,6 +281,7 @@ func command(action: String) -> void:
 		"pulse": metronome = not metronome
 		"close_help": screen = "playing"
 		_:
+			if action.begins_with("page_"): boss_page = clampi(int(action.trim_prefix("page_")),0,1); return
 			if action.begins_with("set_"): equip_set(int(action.trim_prefix("set_")),true); return
 			if action.begins_with("level_"): profile.data.difficulty = clampi(int(action.trim_prefix("level_")),0,2); profile.save_profile(); return
 			if action.begins_with("upgrade_"): choose_upgrade(action.trim_prefix("upgrade_")); return
@@ -285,6 +290,7 @@ func command(action: String) -> void:
 				start_fight(int(action.trim_prefix("boss_")))
 
 func start_fight(index: int) -> void:
+	songs = SongBosses.new()
 	menu_history.clear()
 	mouse_attack_latched = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	fight_base_score = run.score; fight_base_time = run.time; fight_base_hits = run.hits
@@ -311,8 +317,8 @@ func start_fight(index: int) -> void:
 	parry_cd = 0; parry_time = 0; charge_time = 0; windup = 0; phase = 0
 	riposte_time = 0; bleed_time = 0; bleed_stacks = 0; bleed_tick = 0.5; followup_delay = 0; followup_pattern = ""
 	combo = 0; combo_time = 0; attack_number = 0; elapsed = 0; hits = 0; attack_timer = 1.8
-	shake = 0
-	banner = "MOVEMENT %02d  /  %s" % [index+1,bosses[index].name]
+	shake = 0; boss_flash = 0
+	banner = "MOVEMENT %02d  /  %s" % [boss_index+1,bosses[boss_index].name]
 	banner_time = 2.6
 	screen = "playing"
 	print("RHAPSODY_FIGHT_READY movement=",boss_index+1)
@@ -486,7 +492,7 @@ func damage_boss(amount: float) -> void:
 		floats.append({"p":boss+Vector2(0,-55),"text":str(int(amount)),"life":0.55})
 		return
 	if training:
-		var dealt = amount*(1.3 if stagger_time>0 else 1.0)
+		var dealt = amount*(1.3 if stagger_time>0 else 1.0)*songs.multiplier(boss_index)
 		boss_flash = 0.08
 		fight_score += int(dealt)
 		training_damage += dealt; training_hit_count += 1; training_last_hit = dealt
@@ -494,7 +500,7 @@ func damage_boss(amount: float) -> void:
 		if training_window.size()>200: training_window.pop_front()
 		floats.append({"p":boss+Vector2(rng.randf_range(-20,20),-55),"text":str(int(dealt)),"life":0.55})
 		return
-	var dealt = amount*(1.3 if stagger_time>0 else 1.0)
+	var dealt = amount*(1.3 if stagger_time>0 else 1.0)*songs.multiplier(boss_index)
 	boss_hp = maxf(0,boss_hp-dealt)
 	fight_score += int(dealt*(1.0+style/100.0))
 	boss_flash = 0.08
@@ -504,10 +510,10 @@ func damage_boss(amount: float) -> void:
 			tutorial.event("victory"); shots.clear(); hazards.clear(); return
 		if not victory_accounted:
 			victory_accounted = true
-			profile.record_clear(boss_index,elapsed,hits,run.difficulty,fight_assisted)
+			profile.record_clear(boss_index,elapsed,hits,run.difficulty,fight_assisted,not practice)
 			run.score += fight_score+int(1000*maxf(0,1-elapsed/180.0))
 			run.time += elapsed; run.hits += hits
-			if boss_index == 2 and not practice:
+			if boss_index == bosses.size()-1 and not practice:
 				profile.data.checkpoint = {}; profile.save_profile()
 		screen = "clear"
 		emit_sparks(boss,GOLD,80)
@@ -550,6 +556,7 @@ func _process(raw_delta: float) -> void:
 	queue_redraw()
 
 func simulate(delta: float) -> void:
+	songs.tick(delta)
 	if profile.data.assist: fight_assisted = true; run.assisted = true
 	elapsed += delta
 	for prop in ["invincible","dash_time","dash_cd","melee_cd","melee_flash","shoot_cd","parry_time","parry_cd","boss_flash","banner_time","combo_time"]:
@@ -651,7 +658,7 @@ func change_perspective(to_side: bool) -> void:
 	shots.clear(); hazards.clear()
 	melee_snapshot.clear(); melee_windup = 0; melee_flash = 0
 	ground_grace = 0; jump_buffer = 0
-	windup = 0; charge_time = 0; attack_timer = 2.5
+	windup = 0; charge_time = 0; followup_delay = 0; followup_pattern = ""; attack_timer = 2.5
 	player = Vector2(clampf(player.x,170,600),560 if side else 440)
 	boss = Vector2(950,515 if side else 350)
 	velocity = Vector2.ZERO
@@ -667,12 +674,13 @@ func update_boss(delta: float) -> void:
 		boss.x = clampf(boss.x,160,1120); boss.y = clampf(boss.y,235,550)
 		if boss.distance_to(player)<58: hurt(28)
 		return
+	if songs.recovery>0: return
 	if windup>0:
 		windup -= delta
 		if windup<=0:
 			execute_pattern(pending_pattern)
-			if phase>0 and not chain_active and attack_number%2 == 0 and not tutorial_active:
-				followup_delay = 0.4; followup_pattern = ["fan","rain","prism"][boss_index]
+			if phase>0 and not chain_active and attack_number%2 == 0 and not tutorial_active and songs.recovery<=0:
+				followup_delay = 0.4; followup_pattern = bosses[boss_index].get("followup",["fan","rain","prism"][mini(boss_index,2)])
 		return
 	if followup_delay>0:
 		followup_delay -= delta
@@ -682,26 +690,28 @@ func update_boss(delta: float) -> void:
 	var offset = Vector2(cos(elapsed*0.9+boss_index)*170,sin(elapsed*1.2)*85)
 	var destination = player+offset
 	if boss.distance_to(player)>350: destination = player+player.direction_to(boss)*170
+	if boss_index>=3: destination = songs.destination(self)
 	if side: destination.y = 510
 	destination.x = clampf(destination.x,175,1110); destination.y = clampf(destination.y,240,540)
-	boss = boss.move_toward(destination,delta*(180+boss_index*25))
+	boss = boss.move_toward(destination,delta*([190,225,185,175][boss_index-3] if boss_index>=3 else 180+boss_index*25))
 	if boss.distance_to(player)<53: hurt(18)
 	attack_timer -= delta
 	if attack_timer<=0:
 		var patterns: Array = ["fan","cleave"] if tutorial_active else bosses[boss_index].patterns
 		pending_pattern = patterns[attack_number%patterns.size()]
-		if not tutorial_active and attack_number%2 == 1:
+		if not tutorial_active and boss_index<3 and attack_number%2 == 1:
 			if boss.distance_to(player)<155: pending_pattern = "cleave"
 			elif boss.distance_to(player)>470: pending_pattern = "mines"
 		attack_number += 1; chain_active = false
 		aim_snapshot = player+(velocity*0.12).limit_length(70)
-		windup = 0.9 if tutorial_active else (0.62 if phase == 0 else 0.48)
+		windup = 0.9 if tutorial_active else ((0.72 if phase == 0 else 0.60) if boss_index>=3 else (0.62 if phase == 0 else 0.48))
 		attack_timer = 1.4 if tutorial_active else float(bosses[boss_index].interval)*(1.0-0.14*phase)*float(RunState.DIFFICULTIES[run.difficulty].interval)
 
 func enemy_shot(p: Vector2,angle: float,speed: float,size: float = 7) -> void:
 	if shots.size()<350: shots.append(Shot.new(p,Vector2.RIGHT.rotated(angle)*speed,false,12,size))
 
 func execute_pattern(pattern: String) -> void:
+	if songs.execute(self,pattern): return
 	var speed = 170.0 if tutorial_active else float(bosses[boss_index].speed)*(1+0.14*phase)*float(RunState.DIFFICULTIES[run.difficulty].speed)
 	var angle = boss.angle_to_point(aim_snapshot)
 	sound.tone(130+boss_index*30,0.1,0.09)
@@ -791,7 +801,7 @@ func _draw() -> void:
 
 func draw_menu() -> void:
 	text_at("R / A",Vector2(58,62),22,TEAL)
-	text_at("GAMEPLAY REVISION  /  0.4",Vector2(896,59),14,MUTED)
+	text_at("SONG ENCOUNTERS  /  0.5",Vector2(896,59),14,MUTED)
 	line(Vector2(58,82),Vector2(1222,82),Color("293340"))
 	if screen == "title":
 		text_at("A HYBRID-PERSPECTIVE BOSS RUSH",Vector2(94,157),16,TEAL)
@@ -852,24 +862,29 @@ func draw_menu() -> void:
 		centered("J / right mouse / RT / ABILITY: character skill. Only Lyra fires bullets. Q inspects; it never swaps.",656,15,MUTED)
 		button("BACK",Rect2(490,674,300,34),"back",true)
 	elif screen == "select":
-		text_at("CHOOSE YOUR MOVEMENT",Vector2(96,170),35)
-		text_at("Practice an unlocked boss. Training is always available. Difficulty: "+RunState.DIFFICULTIES[int(profile.data.difficulty)].name,Vector2(96,210),17,MUTED)
-		for i in bosses.size():
-			var x = 96+i*373
-			var available = i<=int(profile.data.unlocked)
+		centered("CHOOSE YOUR MOVEMENT",151,34)
+		centered("Four song encounters are available now. A full performance includes all seven bosses.",188,17,MUTED)
+		var first = 0 if boss_page == 0 else 3
+		var last = 3 if boss_page == 0 else bosses.size()
+		for i in range(first,last):
+			var slot = i-first
+			var x = 96+(slot%2)*552; var y = 220+(slot/2)*180
+			var available = i>=3 or i<=int(profile.data.unlocked)
 			var color = Color(bosses[i].color) if available else MUTED
-			draw_style_box(panel_style(Color("141e29"),Color("33414e")),Rect2(x,253,343,330))
-			draw_boss_figure(Vector2(x+172,350),i,0.95,color)
-			text_at("MOVEMENT %02d" % (i+1),Vector2(x+22,433),14,color)
-			text_at(bosses[i].name,Vector2(x+22,468),22)
+			draw_style_box(panel_style(Color("141e29"),Color("33414e")),Rect2(x,y,532,166))
+			draw_boss_figure(Vector2(x+65,y+91),i,0.60,color)
+			text_at("MOVEMENT %02d" % (i+1),Vector2(x+126,y+23),11,color)
+			text_at(bosses[i].name,Vector2(x+126,y+50),21)
+			wrapped_text(bosses[i].get("song",bosses[i].subtitle)+(" · "+bosses[i].artist if i>=3 else ""),Vector2(x+126,y+73),385,13,MUTED)
 			var key = profile.record_key(i,int(profile.data.difficulty))
-			var best = "NO CLEAR YET"
-			if profile.data.best.has(key): best = "BEST  %.1fs  /  %d HITS" % [profile.data.best[key].time,profile.data.best[key].hits]
-			text_at(best,Vector2(x+22,498),14,MUTED)
-			if available: button("PLAY",Rect2(x+22,520,299,42),"boss_"+str(i),true)
-			else: text_at("CLEAR PREVIOUS MOVEMENT",Vector2(x+22,550),14,MUTED)
-		button("BACK",Rect2(96,621,190,45),"menu")
-		button("TRAINING ARENA",Rect2(810,621,373,45),"training",true)
+			var best = "BEST %.1fs" % profile.data.best[key].time if profile.data.best.has(key) else "NO CLEAR YET"
+			text_at(best,Vector2(x+126,y+122),12,MUTED)
+			if available: button("PLAY",Rect2(x+336,y+112,175,37),"boss_"+str(i),true)
+			else: text_at("CLEAR PREVIOUS BOSS",Vector2(x+126,y+148),12,MUTED)
+		button("BACK",Rect2(96,620,160,44),"menu")
+		button("ORIGINAL TRIO",Rect2(282,620,235,44),"page_0",boss_page == 0)
+		button("SONG ENCOUNTERS",Rect2(535,620,265,44),"page_1",boss_page == 1)
+		button("TRAINING",Rect2(926,620,250,44),"training")
 	elif screen == "settings":
 		centered("TUNE YOUR EXPERIENCE",153,36)
 		centered("Settings save automatically. Assist records stay separate.",191,17,MUTED)
@@ -952,7 +967,7 @@ func draw_arena() -> void:
 	text_at(bosses[boss_index].arena,Vector2(124,192),12,Color("587080"))
 	if windup>0:
 		var alpha = 0.25+0.2*sin(total_time*25)
-		if pending_pattern == "charge" or pending_pattern == "fan":
+		if pending_pattern in ["charge","fan","ember_dash","stage_dive","flame_fan"]:
 			line(boss,aim_snapshot,Color(CORAL,alpha),pending_pattern.length()*2)
 			draw_circle(aim_snapshot,33,Color(CORAL,alpha),false,2,true)
 		elif pending_pattern == "rain":
@@ -965,6 +980,7 @@ func draw_arena() -> void:
 				if absf(y-aim_snapshot.y)>48: line(Vector2(115,y),Vector2(1160,y),Color(CORAL,alpha),2)
 		else: draw_circle(boss,65+(1-windup)*40,Color(CORAL,alpha),false,2,true)
 		text_at("!",boss+Vector2(-5,-82),26,CORAL)
+		if boss_index>=3: centered(SongBosses.LABELS.get(pending_pattern,"CLOSE SWEEP · STEP BACK"),575,14,GOLD)
 	for shot in shots:
 		var c = shot.tint if shot.friendly else color
 		if shot.friendly and shot.source_set == 0: draw_circle(shot.position,shot.radius+5,Color(c,0.13))
@@ -1017,7 +1033,8 @@ func draw_hud() -> void:
 	text_at("R / A",Vector2(42,45),20,TEAL)
 	text_at("MOVEMENT %02d" % (boss_index+1),Vector2(124,43),14,MUTED)
 	text_at("FIRST NOTES / TUTORIAL" if tutorial_active else bosses[boss_index].name,Vector2(124,76),28)
-	text_at("Practice, learn and finish the rehearsal encounter." if tutorial_active else bosses[boss_index].subtitle,Vector2(124,100),14,MUTED)
+	var subtitle = bosses[boss_index].song+" · "+bosses[boss_index].artist if boss_index>=3 else bosses[boss_index].subtitle
+	text_at("Practice, learn and finish the rehearsal encounter." if tutorial_active else subtitle,Vector2(124,100),14,MUTED)
 	bar(Rect2(124,118,1032,7),boss_hp/max_hp,Color(bosses[boss_index].color))
 	for threshold in [0.33,0.67]: line(Vector2(124+1032*threshold,115),Vector2(124+1032*threshold,128),PAPER,2)
 	text_at("%d / %d" % [int(boss_hp),int(max_hp)],Vector2(1010,100),14,MUTED)
@@ -1040,14 +1057,22 @@ func draw_hud() -> void:
 	text_at("STYLE "+grade+"  /  %d" % fight_score,Vector2(120,157),13,GOLD)
 	text_at("STAGGERED" if stagger_time>0 else "STAGGER",Vector2(1057,153),11,GOLD)
 	if not training and not tutorial_active:
-		if riposte_time>0: text_at("RIPOSTE READY",Vector2(400,153),13,GOLD)
-		elif bleed_stacks>0: text_at("BLEED x%d" % bleed_stacks,Vector2(400,153),13,CORAL)
+		if riposte_time>0: text_at("RIPOSTE READY",Vector2(800,153),12,GOLD)
+		elif bleed_stacks>0: text_at("BLEED x%d" % bleed_stacks,Vector2(800,153),12,CORAL)
+	if boss_index>=3 and not training and not tutorial_active:
+		var encounter: Dictionary = bosses[boss_index]
+		var state = encounter.phases[phase]
+		if boss_index == 4: state += " · HEAT %d / 4" % songs.heat if songs.recovery<=0 else " · OVERHEATED %.1fs" % songs.recovery
+		if boss_index == 6: state += " · VOLUME %d / 3" % songs.volume if songs.recovery<=0 else " · SILENCE %.1fs" % songs.recovery
+		text_at(state,Vector2(360,153),12,GOLD)
+		if elapsed<14: centered(encounter.tip,677,13,GOLD)
+		elif not songs.attack_label.is_empty() and windup<=0: centered(songs.attack_label,677,13,GOLD)
 	if training:
 		text_at("TRAINING · NO RECORDS · T ATTACKS "+("ON" if training_attacks else "OFF")+" · V SHIFT VIEW",Vector2(360,153),13,TEAL)
 	if banner_time>0 and screen == "playing":
 		draw_rect(Rect2(200,284,880,78),Color(0.03,0.05,0.08,0.93))
 		centered(banner,330,22,TEAL)
-	elif elapsed<14 and screen == "playing" and not used_touch and not training:
+	elif elapsed<14 and screen == "playing" and not used_touch and not training and boss_index<3:
 		centered("Melee restores energy. Gold parry blocks projectiles. Mix actions to build stagger and style.",678,12,GOLD)
 	if training:
 		draw_rect(Rect2(114,198,326,61),Color(INK,0.9))
@@ -1078,6 +1103,13 @@ func draw_overlay() -> void:
 		button("CHARACTER DETAILS",Rect2(450,518,380,48),"arsenal")
 		button("COMBAT GUIDE",Rect2(90,518,285,48),"help")
 		button("TITLE SCREEN",Rect2(450,582,380,48),"menu")
+		if boss_index>=3:
+			var encounter: Dictionary = bosses[boss_index]
+			draw_style_box(panel_style(Color("14212c"),Color(encounter.color)),Rect2(870,320,330,286))
+			text_at("ENCOUNTER NOTES",Vector2(890,349),14,GOLD)
+			var y = wrapped_text(encounter.song+" · "+encounter.artist,Vector2(890,378),290,16)
+			y = wrapped_text(encounter.mechanic,Vector2(890,y+14),290,14,TEAL)
+			wrapped_text(encounter.tip+" Gold warnings are safe. Round projectiles can be parried.",Vector2(890,y+12),290,14,MUTED)
 		if training:
 			button("ATTACKS "+("ON" if training_attacks else "OFF"),Rect2(90,390,285,48),"training_attacks")
 			button("SWITCH PERSPECTIVE",Rect2(90,454,285,48),"training_view")
@@ -1095,12 +1127,12 @@ func draw_overlay() -> void:
 		button("SETTINGS / ASSIST",Rect2(450,475,380,48),"settings")
 		button("TITLE SCREEN",Rect2(450,540,380,48),"menu")
 	elif screen == "clear":
-		centered("MOVEMENT COMPLETE" if boss_index<2 else "FINALE COMPLETE",239,40,GOLD)
+		centered("MOVEMENT COMPLETE" if boss_index<bosses.size()-1 else "FINALE COMPLETE",239,40,GOLD)
 		centered(bosses[boss_index].name+"  /  SILENCED",291,20,MUTED)
 		var rank = "S" if hits == 0 else ("A" if hits<=3 else ("B" if hits<=6 else "C"))
 		centered("%s     %.1fs     %d HITS" % [rank,elapsed,hits],364,34)
 		centered("%d PARRIES  /  %d PERFECT DODGES  /  SCORE %d" % [parries,perfect_dodges,fight_score],400,16,TEAL)
-		button("CHOOSE AUGMENTATION" if boss_index<2 and not practice else "RETURN TO TITLE",Rect2(450,445,380,54),"next",true)
+		button("CHOOSE AUGMENTATION" if boss_index<bosses.size()-1 and not practice else "RETURN TO TITLE",Rect2(450,445,380,54),"next",true)
 		button("PLAY AGAIN",Rect2(450,516,380,48),"retry")
 		centered("PERFORMANCE TOTAL  %d  /  %.1fs  /  %d HITS" % [run.score,run.time,run.hits],608,18,GOLD)
 
@@ -1148,7 +1180,7 @@ func add_stagger(amount: float) -> void:
 	stagger = minf(100,stagger+amount)
 	if stagger>=100:
 		stagger = 0; stagger_time = 1.25; stagger_lock = 7.0
-		windup = 0; charge_time = 0; attack_timer = 1.1
+		windup = 0; charge_time = 0; followup_delay = 0; followup_pattern = ""; attack_timer = 1.1
 		banner = "STAGGER  /  DAMAGE +30%"; banner_time = 1.1
 		emit_sparks(boss,GOLD,30)
 		sound.tone(180,0.25)
@@ -1186,6 +1218,8 @@ func touch_layout() -> Array:
 	return layout
 
 func draw_architecture(color: Color) -> void:
+	if boss_index>=3:
+		songs.draw_arena(self,boss_index,color); return
 	var faint = Color(color,0.10)
 	if boss_index == 0:
 		var center = Vector2(640,380)
@@ -1218,6 +1252,8 @@ func poly_at(p: Vector2,points: Array,scale_factor: float,color: Color) -> void:
 	draw_colored_polygon(packed,color)
 
 func draw_boss_figure(p: Vector2,index: int,size: float,color: Color) -> void:
+	if index>=3:
+		songs.draw_figure(self,p,index,size,color); return
 	var dark = Color(color.darkened(0.7),1)
 	var swing = sin(total_time*2.0)*8
 	if index == 0:

@@ -1,4 +1,4 @@
-# Foundation, version 0.4
+# Foundation, version 0.5
 
 Rhapsody: Allegro uses one Godot simulation for browser and desktop. The prototype combines action boss fights with top-down / side-scrolling transitions. Combat has no required beat timing. Final art, story and soundtrack remain open for feedback.
 
@@ -16,12 +16,22 @@ Augmentation cards show a side reference panel on mouse hover, keyboard/controll
 
 ## Run and save integrity
 
-Title → character / difficulty → boss → results → augmentation → next boss. Checkpoints store character, upgrades, difficulty, assist classification, seed and totals at the beginning of a movement. Retries roll back that movement's contribution. Final campaign completion clears its checkpoint. Training cannot kill participants or create records.
+Title → character / difficulty → boss → results → augmentation → next boss, for seven movements and six augmentation choices. Checkpoints store character, upgrades, difficulty, assist classification, seed and totals at the beginning of a movement. Retries roll back that movement's contribution. Final campaign completion clears its checkpoint. Training cannot kill participants or create records.
 
 Profiles remain version 1 with defaults for new fields. Save writes use a temporary file and rename. Corrupt JSON recovers safely; malformed checkpoint values and duplicate or unknown upgrades are sanitized. Older weapon choices map to characters and missing choices default to Aria. Assist records remain separately classified even if assist is later turned off.
 
 ## Validation
 
-Headless suites cover combat, all characters, projectile exclusivity, abilities, passives, selection locks, tutorial objectives and completion isolation, reference data and dispatched keyboard/mouse/multitouch input. Stress simulations cover every boss/difficulty with bounded objects and finite physics for 24 simulated minutes. Native OpenGL captures cover tutorial, characters, reference panels and the existing screens.
+Headless suites cover combat, all characters, projectile exclusivity, abilities, passives, selection locks, tutorial objectives and completion isolation, reference data and dispatched keyboard/mouse/multitouch input. Stress simulations cover every boss/difficulty with bounded objects and finite physics for 60 simulated minutes. Native OpenGL captures cover tutorial, characters, reference panels and the existing screens.
 
 Web and Windows release exports share the tested source. The hosted package test checks byte-identical valid WebAssembly assembly, MIME, host size limits, asset fallthrough and failed-chunk handling. A Chromium smoke test is maintained for CI. Browser end-to-end testing was unavailable in this development environment, so physical browser/device input, audio and performance remain for player testing.
+
+## Song expansion
+
+The original indices 0–2 remain stable. Four song-inspired encounters are appended at 3–6; normal progression now ends at index 6. Roster data drives save bounds, unlock limits and finale behavior. Direct practice exposes the four additions immediately while keeping campaign unlocks separate. Existing checkpoints at original movements remain valid.
+
+`encounters.gd` loads the shared roster. `song_bosses.gd` owns per-fight heat / volume state, custom patterns, movement destinations, vector figures and arenas. Retrying creates a fresh encounter state. Perspective changes and stagger cancel pending follow-up chains. Hazards warn before activation, are visible throughout their delay and obey the 24-object budget. Wave gaps account for the player's radius; hollow rings have collision-tested safe interiors. Floor tiles remain jumpable in side view. Every new boss has a parryable volley pattern.
+
+Cinder's four flame attacks trigger 3.8 seconds of immobility and +20% incoming damage; existing fire still resolves. Tyrant's three loud attacks trigger 3.4 seconds of immobility while existing soundwaves resolve. These openings use simulation time and pause with the game. Pattern pressure and wave count increase by phase; volleys also use difficulty speed and density. The parade's floor pattern preserves a completely clear column, and spotlight lanes have explicit gaps.
+
+See SONG_BOSSES.md for the concepts, attack catalog and source song attribution.

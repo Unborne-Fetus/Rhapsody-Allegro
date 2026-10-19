@@ -50,5 +50,105 @@
       "rain"
     ],
     "arena": "THE LAST AUDITORIUM"
+  },
+  {
+    "name": "VELVET FUSE",
+    "subtitle": "A velvet voice. An explosive invitation.",
+    "color": "f18db2",
+    "hp": 3000,
+    "interval": 0.86,
+    "speed": 285,
+    "patterns": [
+      "fuse_chain",
+      "velvet_trap",
+      "heartbreaker",
+      "cleave"
+    ],
+    "arena": "THE VELVET LOUNGE",
+    "song": "Sexbomb",
+    "artist": "Tom Jones",
+    "followup": "velvet_trap",
+    "mechanic": "FUSE / SAFE EYE",
+    "tip": "Gold circles count down. Leave the bombs; step inside the hollow blast rings.",
+    "phases": [
+      "SLOW BURN",
+      "CHAIN REACTION",
+      "GRAND DETONATION"
+    ]
+  },
+  {
+    "name": "THE CINDER KING",
+    "subtitle": "A heart too hot to hold",
+    "color": "ff9e52",
+    "hp": 3300,
+    "interval": 0.78,
+    "speed": 310,
+    "patterns": [
+      "ember_dash",
+      "flame_fan",
+      "heartfire",
+      "cleave"
+    ],
+    "arena": "THE BURNING BALLROOM",
+    "song": "Burning Love",
+    "artist": "Elvis Presley",
+    "followup": "heartfire",
+    "mechanic": "HEAT / OVERHEAT",
+    "tip": "Flame attacks raise heat. At four, the King overheats: close in for +20% damage.",
+    "phases": [
+      "SPARK",
+      "WILDFIRE",
+      "INFERNO"
+    ]
+  },
+  {
+    "name": "THE EVERLASTING PARADE",
+    "subtitle": "Six shadows. One unbroken celebration.",
+    "color": "84e9d5",
+    "hp": 3600,
+    "interval": 0.94,
+    "speed": 285,
+    "patterns": [
+      "dancefloor",
+      "six_step",
+      "spotlight",
+      "cleave"
+    ],
+    "arena": "THE INFINITE DISCOTHEQUE",
+    "song": "Can't Stop the Music",
+    "artist": "Village People",
+    "followup": "six_step",
+    "mechanic": "CHOREOGRAPHY / SAFE LANE",
+    "tip": "Dark floor tiles are safe. Follow the open lane; no beat-timed input is required.",
+    "phases": [
+      "OPENING NUMBER",
+      "CALL AND RESPONSE",
+      "NEVER-ENDING ENCORE"
+    ]
+  },
+  {
+    "name": "THE FEEDBACK TYRANT",
+    "subtitle": "Turn the silence into thunder",
+    "color": "b5a2ff",
+    "hp": 4000,
+    "interval": 0.82,
+    "speed": 330,
+    "patterns": [
+      "power_chord",
+      "amp_wall",
+      "stage_dive",
+      "cleave"
+    ],
+    "arena": "THE WALL OF SOUND",
+    "song": "Cum On Feel the Noize",
+    "artist": "Quiet Riot",
+    "followup": "power_chord",
+    "mechanic": "VOLUME / SILENCE",
+    "tip": "Use gaps in sound rings. Three loud attacks lead to silence: punish the recovery.",
+    "phases": [
+      "SOUNDCHECK",
+      "CRANK IT UP",
+      "MAXIMUM NOIZE"
+    ]
   }
 ]

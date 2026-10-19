@@ -1,5 +1,6 @@
 extends RefCounted
 ## Run progression and tuning, independent of scene/input/rendering.
+const Encounters = preload("res://scripts/encounters.gd")
 const Arsenal = preload("res://scripts/weapons.gd")
 const Characters = preload("res://scripts/characters.gd")
 const WEAPONS = Arsenal.SETS
@@ -58,7 +59,7 @@ func snapshot(next_boss: int,assist: bool) -> Dictionary:
 	return {"weapon":loadout_index,"seed":seed_value,"boss":next_boss,"upgrades":upgrades.duplicate(),"difficulty":difficulty,"assist":assist,"assisted":assist or assisted,"score":score,"time":time,"hits":hits}
 func restore(value: Dictionary) -> bool:
 	if not value.get("boss") is float and not value.get("boss") is int: return false
-	if int(value.boss)<0 or int(value.boss)>2: return false
+	if int(value.boss)<0 or int(value.boss)>Encounters.last_index(): return false
 	reset(int(number(value.get("difficulty",0))))
 	loadout_index = Arsenal.valid_index(value.get("weapon",Arsenal.DEFAULT))
 	seed_value = int(number(value.get("seed",1)))

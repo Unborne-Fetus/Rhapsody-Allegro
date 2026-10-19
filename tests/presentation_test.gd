@@ -49,5 +49,16 @@ func run_capture() -> void:
 	game.ui_mouse_active = false
 	for focus in 3:
 		game.menu_focus = focus; game.upgrade_focus = focus; await capture("mechanic-"+str(focus))
+	game.command("menu"); game.command("select"); game.boss_page = 0; await capture("boss-select-original")
+	game.boss_page = 1; await capture("boss-select-songs")
+	for index in range(3,7):
+		game.command("menu"); game.practice = true; game.training = false; game.start_fight(index)
+		game.banner_time = 0; game.elapsed = 20; game.aim_snapshot = game.player
+		game.execute_pattern(game.bosses[index].patterns[0]); game.execute_pattern(game.bosses[index].patterns[1])
+		game.simulate(0.016); await capture("song-"+str(index))
+		game.screen = "paused"; await capture("song-notes-"+str(index)); game.screen = "playing"
+		game.change_perspective(true); game.banner_time = 0; game.phase = 1; game.aim_snapshot = game.player
+		game.execute_pattern(game.bosses[index].patterns[0]); game.simulate(0.016)
+		await capture("song-side-"+str(index))
 	print("PRESENTATION_CAPTURE_COMPLETE")
 	quit()

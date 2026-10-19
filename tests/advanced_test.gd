@@ -81,7 +81,14 @@ func run_tests() -> void:
 	game.damage_boss(99999); game.advance(); game.choose_upgrade(game.upgrade_options[0].id)
 	check(game.boss_index == 2 and game.run.upgrades.size() == 2,"Full campaign reaches finale with two upgrades")
 	game.damage_boss(99999)
-	check(game.profile.data.checkpoint.is_empty() and game.screen == "clear","Finale clears completed checkpoint")
+	check(not game.profile.data.checkpoint.is_empty() and game.screen == "clear","Original finale now continues into song encounters")
+	for next in range(3,game.bosses.size()):
+		game.advance(); game.choose_upgrade(game.upgrade_options[0].id)
+		check(game.boss_index == next and game.run.upgrades.size() == next,"Seven-movement campaign carries upgrades")
+		game.command("menu"); game.continue_run()
+		check(game.boss_index == next and game.run.upgrades.size() == next,"Continue restores late campaign movement")
+		game.damage_boss(99999)
+	check(game.profile.data.checkpoint.is_empty(),"Seventh movement clears completed checkpoint")
 	game.start_run(); game.touch_move = Vector2.ONE; game.touch_actions[1] = "shoot"
 	game._notification(game.NOTIFICATION_APPLICATION_FOCUS_OUT)
 	check(game.screen == "paused" and game.touch_move == Vector2.ZERO and game.touch_actions.is_empty(),"Focus loss pauses and clears touch actions")

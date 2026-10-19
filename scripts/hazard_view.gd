@@ -23,10 +23,25 @@ func _draw() -> void:
 				if not active:
 					draw_arc(hazard.origin,hazard.area_radius+5,-PI/2,-PI/2+TAU*clampf(hazard.age/hazard.warning,0,1),32,Color("e8c575"),2,true)
 					draw_string(game.font,hazard.origin+Vector2(-4,5),"!",HORIZONTAL_ALIGNMENT_LEFT,-1,17,Color("e8c575"))
+			"floor":
+				var rect = Rect2(hazard.origin,hazard.target-hazard.origin)
+				draw_rect(rect,Color(c,0.28 if active else 0.06))
+				draw_rect(rect,Color(c,alpha),false,3)
+				if not active: draw_string(game.font,rect.get_center()+Vector2(-4,5),"!",HORIZONTAL_ALIGNMENT_LEFT,-1,18,c)
+			"annulus":
+				var middle = (hazard.area_radius+hazard.inner_radius)/2
+				draw_circle(hazard.origin,middle,Color(c,0.16 if active else 0.04),false,hazard.area_radius-hazard.inner_radius,true)
+				draw_circle(hazard.origin,hazard.area_radius,Color(c,alpha),false,3,true)
+				draw_circle(hazard.origin,hazard.inner_radius,Color("74ead5"),false,2,true)
+				if not active: draw_string(game.font,hazard.origin+Vector2(-26,5),"SAFE EYE",HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("74ead5"))
 			"wave":
 				var radius = hazard.radius if active else 56.0
-				draw_circle(hazard.origin,radius,Color(c,alpha),false,10 if active else 2,true)
-				if active: draw_circle(hazard.origin,maxf(1,radius-8),Color(c,0.18),false,4,true)
+				if hazard.gap_width>0:
+					draw_arc(hazard.origin,radius,hazard.gap_angle+hazard.gap_width,hazard.gap_angle+TAU-hazard.gap_width,64,Color(c,alpha),10 if active else 2,true)
+					for angle in [hazard.gap_angle-hazard.gap_width,hazard.gap_angle+hazard.gap_width]:
+						var direction = Vector2.RIGHT.rotated(angle)
+						draw_line(hazard.origin+direction*maxf(0,radius-18),hazard.origin+direction*(radius+18),Color("74ead5"),2,true)
+				else: draw_circle(hazard.origin,radius,Color(c,alpha),false,10 if active else 2,true)
 
 func draw_weapon_ranges() -> void:
 	var weapon: Dictionary = game.Arsenal.SETS[game.weapon_index]

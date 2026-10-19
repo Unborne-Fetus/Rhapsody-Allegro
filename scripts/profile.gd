@@ -1,5 +1,6 @@
 extends RefCounted
 ## Versioned local profile. Browser exports use Godot's IndexedDB-backed user://.
+const Encounters = preload("res://scripts/encounters.gd")
 const Arsenal = preload("res://scripts/weapons.gd")
 const PATH := "user://profile.json"
 var path := PATH
@@ -19,7 +20,7 @@ func load_profile() -> void:
 			if record is Dictionary and record.get("time") is float and (record.get("hits") is float or record.get("hits") is int):
 				valid_best[key] = {"time":maxf(0,record.time),"hits":maxi(0,int(record.hits))}
 		data.best = valid_best
-		data.unlocked = clampi(int(data.unlocked),0,2)
+		data.unlocked = clampi(int(data.unlocked),0,Encounters.last_index())
 		data.difficulty = clampi(int(parsed.get("difficulty",0)),0,2) if parsed.get("difficulty",0) is float or parsed.get("difficulty",0) is int else 0
 		data.weapon = Arsenal.valid_index(parsed.get("weapon",Arsenal.DEFAULT))
 		data.volume = clampf(float(data.volume),0,1)
@@ -31,8 +32,8 @@ func save_profile() -> void:
 		DirAccess.rename_absolute(path+".tmp",path)
 func record_key(index: int,difficulty: int = 0,assisted: Variant = null) -> String:
 	return str(index) + ("_d"+str(difficulty) if difficulty>0 else "") + ("_assist" if (bool(data.assist) if assisted == null else bool(assisted)) else "")
-func record_clear(index: int, seconds: float, hits: int,difficulty: int = 0,assisted: Variant = null) -> void:
-	data.unlocked = mini(2,maxi(int(data.unlocked),index+1))
+func record_clear(index: int, seconds: float, hits: int,difficulty: int = 0,assisted: Variant = null,unlock: bool = true) -> void:
+	if unlock: data.unlocked = mini(Encounters.last_index(),maxi(int(data.unlocked),index+1))
 	var key = record_key(index,difficulty,assisted)
 	if not data.best.has(key) or seconds < float(data.best[key].time):
 		data.best[key] = {"time":seconds,"hits":hits}

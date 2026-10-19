@@ -1,6 +1,6 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.4** addresses gameplay feedback with a playable tutorial, more demanding bosses, four locked characters and contextual upgrade explanations.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.5** adds four song-inspired encounters to the existing three-boss roster, with a seven-movement campaign and direct practice access. The tutorial, locked character kits and contextual upgrade explanations remain.
 
 **[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
@@ -11,9 +11,22 @@ A Godot action boss rush that changes between top-down and side-scrolling combat
 - **Only Horizon fires player bullets.** The other three characters have melee abilities and absorb parried projectiles. Lyra can reflect them.
 - **Harder bosses:** more health, faster pressure, pursuit, close-range sweeps, anti-kiting mines and later-phase chains. Every attack retains a warning. Stagger openings are shorter and cannot permanently lock a boss.
 - **Contextual upgrade panels:** hover, focus or tap a card to read its core mechanics, including resonance, stagger and energy. Use CHOOSE to commit.
-- **Three-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
+- **Seven-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
 - **Training:** immortal dummy, optional attacks, manual perspective changes, range guides and damage / DPS readouts. Select a character before entering.
 - **Keyboard, mouse, controller and multitouch:** aspect-preserving scaling, portrait letterboxing, focus-loss pause, configurable volume, shake, flashes and assist mode.
+
+## Song encounters
+
+Open **Boss Practice → Song Encounters** to try any of these immediately, or continue the full performance after The Conductor. The original three retain their indices and records. Practice clears create personal bests without advancing campaign unlocks.
+
+| Boss | Inspiration | Signature gameplay |
+|---|---|---|
+| Velvet Fuse | Tom Jones — Sexbomb | Countdown bomb chains, hollow blast rings, expanding waves |
+| The Cinder King | Elvis Presley — Burning Love | Burning dash trails, flame fans, four-attack heat cycle with +20% damage overheat opening |
+| The Everlasting Parade | Village People — Can't Stop the Music | Six spectral performers, alternating floor tiles and open spotlight lanes |
+| The Feedback Tyrant | Quiet Riot — Cum On Feel the Noize | Gapped speaker shockwaves, amplifier walls, stage dives and a three-attack silence cycle |
+
+Each has three named phases, its own arena and silhouette, movement behavior, telegraphs, later-phase follow-ups and parryable volleys. Encounter notes in the pause menu explain the central mechanic. These are original interpretations with synthesized effects; recordings and lyrics are not bundled.
 
 ## Characters
 
@@ -47,7 +60,7 @@ Mouse attacks aim at the pointer. Keyboard-only, controller and touch aim at the
 
 ## Build and develop
 
-Use **Godot 4.5.1 standard** with matching export templates. Import `project.godot` and press F5. `build.bat` runs all four regression suites and exports Web and Windows; set `GODOT` to your executable path if it is not on PATH.
+Use **Godot 4.5.1 standard** with matching export templates. Import `project.godot` and press F5. `build.bat` runs all five regression suites and exports Web and Windows; set `GODOT` to your executable path if it is not on PATH.
 
 ```sh
 godot --headless --editor --import --quit
@@ -55,6 +68,7 @@ godot --headless --script res://tests/combat_test.gd
 godot --headless --script res://tests/advanced_test.gd
 godot --headless --script res://tests/input_test.gd
 godot --headless --script res://tests/weapon_test.gd
+godot --headless --script res://tests/song_boss_test.gd
 mkdir -p build/web build/windows
 touch build/.gdignore
 godot --headless --export-release Web
@@ -70,12 +84,12 @@ The web packager preserves the actual engine bytes, splits them into assets belo
 
 ## Verification
 
-The headless combat, progression, input and character/tutorial suites cover gameplay rules and 24 simulated minutes across every boss/difficulty. Native OpenGL captures verify the tutorial, character roster and upgrade references. Both release exports and the WebAssembly package are checked locally. A browser smoke test is included in CI; browser end-to-end testing is unavailable in this environment, so no successful browser playtest is claimed.
+The five headless suites cover combat, progression, dispatched input, character/tutorial rules and song encounters. Stress simulation includes 24 minutes for the original roster and 36 minutes across every new boss, phase and difficulty. Native OpenGL captures verify the tutorial, character roster and upgrade references. Both release exports and the WebAssembly package are checked locally. A browser smoke test is included in CI; browser end-to-end testing is unavailable in this environment, so no successful browser playtest is claimed.
 
 GitHub Actions builds Web and Windows artifacts and runs the browser smoke test. Optional GitHub Pages hosting uses `ENABLE_GITHUB_PAGES=true`; the private play link above is independent of Pages.
 
 ## Source
 
-`scripts/game.gd` owns encounter flow and interface. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
+`scripts/game.gd` owns encounter flow and interface. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `song_bosses.gd` owns the custom encounter mechanics, attacks and vector figures; `encounters.gd` provides shared roster bounds. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
 
 See [foundation notes](docs/FOUNDATION.md). No third-party art or recordings are bundled. Godot's engine and default font retain upstream licenses. No license for original game source has been granted yet.

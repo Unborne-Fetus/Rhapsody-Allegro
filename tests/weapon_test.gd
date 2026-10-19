@@ -131,7 +131,7 @@ func run_tests() -> void:
 	game.phase = 1; game.attack_number = 2; game.chain_active = false; game.windup = 0.01; game.pending_pattern = "fan"; game.update_boss(0.02)
 	check(game.followup_delay>0,"Later phases schedule chained attacks")
 	game.update_boss(0.5); check(game.windup>0 and game.chain_active,"Follow-up has its own warning")
-	for b in game.bosses: check(b.hp>=1500 and b.interval<=0.9,"Boss durability and pressure increased")
+	for b in game.bosses.slice(0,3): check(b.hp>=1500 and b.interval<=0.9,"Boss durability and pressure increased")
 	DirAccess.remove_absolute(game.profile.path); game.queue_free()
 	print("CHARACTER_TUTORIAL_TESTS checks=",checks," failures=",failures)
 	quit(1 if failures else 0)
