@@ -108,6 +108,8 @@ var dash_cd := 0.0
 var dash_dir := Vector2.RIGHT
 var melee_cd := 0.0
 var melee_flash := 0.0
+var attack_animation := 0.0
+var hurt_animation := 0.0
 var combo := 0
 var combo_time := 0.0
 var shoot_cd := 0.0
@@ -349,7 +351,7 @@ func start_fight(index: int) -> void:
 	stagger = 0; stagger_time = 0; stagger_lock = 0; style = 0; style_chain = 0
 	last_action = ""; fight_score = 0; parries = 0; perfect_dodges = 0
 	hit_stop = 0; ground_grace = 0; jump_buffer = 0; victory_accounted = false
-	dash_time = 0; dash_cd = 0; invincible = 1; melee_cd = 0; shoot_cd = 0
+	dash_time = 0; dash_cd = 0; invincible = 1; melee_cd = 0; shoot_cd = 0; attack_animation = 0; hurt_animation = 0
 	parry_cd = 0; parry_time = 0; charge_time = 0; windup = 0; phase = 0
 	riposte_time = 0; bleed_time = 0; bleed_stacks = 0; bleed_tick = 0.5; followup_delay = 0; followup_pattern = ""
 	combo = 0; combo_time = 0; attack_number = 0; elapsed = 0; hits = 0; attack_timer = 1.8
@@ -472,6 +474,7 @@ func melee() -> void:
 	melee_windup = float(weapon.windup[step])
 	active_melee = melee_snapshot.duplicate(true)
 	melee_flash = 0
+	attack_animation = 0.36
 	sound.tone(130+weapon_index*70,0.05,0.05)
 
 func shoot() -> void:
@@ -481,6 +484,7 @@ func shoot() -> void:
 	if energy<float(character.cost): return
 	energy -= float(character.cost)
 	shoot_cd = float(character.cooldown)
+	attack_animation = 0.36
 	var aim = player.direction_to(boss) if phone_mode or used_touch or gamepad or held(KEY_J) else player.direction_to(mouse_world())
 	facing = aim
 	if weapon_index != 3:
@@ -569,6 +573,7 @@ func hurt(amount: float) -> void:
 	hits += 1
 	style = maxf(0,style-40); style_chain = 0
 	invincible = 0.55
+	hurt_animation = 0.26
 	shake = 10
 	emit_sparks(player,CORAL,18)
 	sound.tone(75,0.18,0.25)
@@ -612,7 +617,7 @@ func simulate(delta: float) -> void:
 	songs.tick(delta)
 	if profile.data.assist: fight_assisted = true; run.assisted = true
 	elapsed += delta
-	for prop in ["invincible","dash_time","dash_cd","melee_cd","melee_flash","shoot_cd","parry_time","parry_cd","boss_flash","banner_time","combo_time"]:
+	for prop in ["invincible","dash_time","dash_cd","melee_cd","melee_flash","attack_animation","hurt_animation","shoot_cd","parry_time","parry_cd","boss_flash","banner_time","combo_time"]:
 		set(prop,maxf(0,float(get(prop))-delta))
 	if not melee_snapshot.is_empty():
 		melee_windup = maxf(0,melee_windup-delta)
@@ -921,7 +926,7 @@ func draw_menu() -> void:
 			wrapped_text(character.debuff,Vector2(x+18,541),240,13,CORAL)
 			if not character_locked(): button("SELECTED" if selected else "SELECT",Rect2(x+18,580,240,32),"set_"+str(i),selected)
 			elif selected: text_at("CURRENT CHARACTER",Vector2(x+18,606),14,c)
-		centered("J / right mouse / RT / ABILITY: character skill. Only Lyra fires bullets. Q inspects; it never swaps.",656,15,MUTED)
+		centered("J / right mouse / RT / ABILITY: musician skill. Only the Singer fires sound projectiles.",656,15,MUTED)
 		button("BACK",Rect2(490,674,300,34),"back",true)
 	elif screen == "select":
 		centered("CHOOSE YOUR MOVEMENT",151,34)
@@ -980,7 +985,7 @@ func draw_menu() -> void:
 		var entries = [
 			["MOVE / DODGE","WASD or arrows · Space to dodge through danger. A close dodge builds resonance."],
 			["STRIKE / DASH STRIKE","Hold K or click left mouse. Heavy attacks wind up; dodge cancels them without refunding recovery."],
-			["FOUR CHARACTERS","Choose before a run. Q inspects your character. Only Lyra shoots; J uses each character ability."],
+			["FOUR MUSICIANS","Choose drummer, bassist, guitarist or singer. The singer uses sound projectiles."],
 			["RESONANCE BREAK","Attacks and perfect dodges earn resonance. E spends 100 on a damaging break."],
 			["STAGGER / STYLE","Mix blade hits, abilities and ranged fire. Fill stagger to open a +30% damage window."],
 			["FORM SHIFTS","Boss health thresholds change perspective. W jumps in side view; S drops through platforms."],
@@ -1512,7 +1517,7 @@ func draw_tutorial_hud() -> void:
 	text_at("COMPLETE" if tutorial.transition>0 else "%d / %d" % [tutorial.progress,lesson.count],Vector2(522,335),13,GOLD)
 
 func draw_character_portrait(p: Vector2,index: int) -> void:
-	StageArt.draw(self,p+Vector2(0,24),12+index,112)
+	StageArt.portrait(self,p,index)
 
 func configure_phone() -> void:
 	if phone_configuring: return
