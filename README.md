@@ -2,7 +2,7 @@
 
 A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.2 — Potato Mode.** Twelve bosses retain their painted artwork, while the four playable musicians now have original pixel-art animation atlases with individually keyed walking, idle, jumping, attack and hurt poses. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
 
-**[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
+**[Previous browser testing link](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — may not contain the current repository changes. A new verified Web build requires a successful export; use `build.bat` and `PLAY-WEB.bat` for a local build in the meantime.
 
 ## Gameplay
 
@@ -75,7 +75,13 @@ Mouse attacks aim at the pointer. Keyboard-only, controller and touch aim at the
 
 ## Build and develop
 
-Use **Godot 4.5.1 standard** with matching export templates. Import `project.godot` and press F5. `build.bat` runs all six regression suites and exports Web and Windows; set `GODOT` to your executable path if it is not on PATH.
+**Windows (no administrator installation required):** download or clone the repository, then double-click **`PLAY.bat`**. On first use, it downloads the official Godot 4.5.1 standard editor into the ignored `tools/.portable-godot/` folder and runs the actual game project. No GitHub Actions, export templates or Python are needed just to play. You can set the `GODOT` environment variable to an existing Godot 4.5.1 editor executable to skip the editor download.
+
+To make standalone releases, double-click **`build.bat`**. On first build, the script also downloads the official Godot 4.5.1 export templates (a large archive) and installs the two required targets in your user profile. The script exports real Godot Windows and Web builds, creates `build/Rhapsody-Allegro-Windows.zip` and `build/Rhapsody-Allegro-Web.zip`, and then runs the six regression suites. The exported **`build/windows/Rhapsody-Allegro.exe`** runs without the Godot editor. Python 3 is optional for CDN-friendly Web packaging; without it, the raw Web export remains in `build/web/`. `PLAY-WEB.bat` launches the local browser version after building (Python 3 required). Use `build.bat FAST` only for an unverified quick export.
+
+**GitHub-hosted Actions warning:** A job that fails in seconds with **zero steps and no assigned runner** has not reached Godot. This project has had that issue on its private repository. Check the repository owner's GitHub Actions usage/runner authorization and account billing status, or build locally using the scripts above. Local Windows builds do **not** consume GitHub Actions minutes. No completed hosted release should be assumed until its build logs and downloadable artifacts exist.
+
+**Linux and macOS developers:** use **Godot 4.5.1 standard** with matching export templates. Import `project.godot`, press F5 to play, or run the commands below to export.
 
 ```sh
 godot --headless --editor --import --quit

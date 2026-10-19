@@ -13,33 +13,47 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install pinned Godot and export templates
         run: |
-          curl -fL https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip -o /tmp/godot.zip
+          curl -fL --retry 3 https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip -o /tmp/godot.zip
           unzip -q /tmp/godot.zip -d /tmp/godot
           sudo install /tmp/godot/Godot_v4.5.1-stable_linux.x86_64 /usr/local/bin/godot
-          curl -fL https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz -o /tmp/templates.tpz
+          curl -fL --retry 3 https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz -o /tmp/templates.tpz
           mkdir -p ~/.local/share/godot/export_templates/4.5.1.stable
           unzip -j -q /tmp/templates.tpz 'templates/web*' 'templates/windows_release_x86_64*' -d ~/.local/share/godot/export_templates/4.5.1.stable
-      - name: Import and test combat
+          godot --version
+
+      # Export downloadable games before regression tests. The build stays red
+      # if tests fail, but diagnostic artifacts remain downloadable.
+      - name: Import project
+        run: godot --headless --editor --import --quit
+      - name: Export playable Web and Windows
         run: |
-          godot --headless --editor --import --quit
+          mkdir -p build/web build/windows
+          touch build/.gdignore
+          godot --headless --export-release "Web" "build/web/index.html"
+          godot --headless --export-release "Windows" "build/windows/Rhapsody-Allegro.exe"
+          test -s build/web/index.html
+          test -s build/web/index.wasm
+          test -s build/web/index.pck
+          test -s build/windows/Rhapsody-Allegro.exe
+      - name: Package Web for static hosts
+        run: python3 tools/package_web.py
+
+      - name: Run Godot combat regressions
+        run: |
           godot --headless --script res://tests/combat_test.gd
           godot --headless --script res://tests/advanced_test.gd
           godot --headless --script res://tests/input_test.gd
           godot --headless --script res://tests/weapon_test.gd
           godot --headless --script res://tests/song_boss_test.gd
           godot --headless --script res://tests/phone_test.gd
-      - name: Export Web and Windows
-        run: |
-          mkdir -p build/web build/windows
-          touch build/.gdignore
-          godot --headless --export-release Web
-          godot --headless --export-release Windows
-          python3 tools/package_web.py
-          node tests/package.cjs
-          node tests/phone_browser.cjs
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Validate Web package and phone layout
+        run: |
+          node tests/package.cjs
+          node tests/phone_browser.cjs
       - name: Browser smoke test
         run: |
           npm install --no-save playwright@1.56.1
@@ -51,15 +65,19 @@ jobs:
         with:
           name: Rhapsody-Allegro-Web
           path: dist/
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Rhapsody-Allegro-Windows
           path: build/windows/
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Browser-screenshots
           path: build/screenshots/
+          if-no-files-found: ignore
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && vars.ENABLE_GITHUB_PAGES == 'true'
         with:

@@ -595,7 +595,7 @@ func emit_sparks(p: Vector2,color: Color,count: int) -> void:
 	# Effects alone must not exhaust the CPU on a low-end browser. This never
 	# changes attacks, hitboxes, warning effects, stagger or score.
 	var limit := 80 if profile.data.eco_mode else 300
-	var budget := mini((count+1)/2 if profile.data.eco_mode else count,limit-sparks.size())
+	var budget := mini(ceili(count*0.5) if profile.data.eco_mode else count,limit-sparks.size())
 	for i in maxi(0,budget):
 		sparks.append({"p":p,"v":Vector2.RIGHT.rotated(visual_rng.randf()*TAU)*visual_rng.randf_range(40,270),"life":visual_rng.randf_range(0.2,0.65),"color":color})
 
