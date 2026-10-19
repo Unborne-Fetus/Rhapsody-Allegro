@@ -27,6 +27,7 @@ func run() -> void:
 		game.simulate(0.016)
 		check(game.side and game.phase == 1,"First threshold enters side-scroller")
 		check(game.shots.is_empty() and game.invincible>1,"Shift clears bullets and grants protection")
+		game.simulate(game.SHIFT_DURATION)
 		game.boss_hp = game.max_hp*0.32
 		game.simulate(0.016)
 		check(not game.side and game.phase == 2,"Final threshold returns to top-down")

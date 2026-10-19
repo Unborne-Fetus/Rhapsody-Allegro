@@ -1,0 +1,98 @@
+[
+  {
+    "title": "Clockwork Overture",
+    "bpm": 128,
+    "genre": "orchestra",
+    "duration": 30.0,
+    "root_midi": 45,
+    "bars": 16
+  },
+  {
+    "title": "Crystal Aria",
+    "bpm": 112,
+    "genre": "glass",
+    "duration": 34.285714285714285,
+    "root_midi": 50,
+    "bars": 16
+  },
+  {
+    "title": "Last Auditorium",
+    "bpm": 138,
+    "genre": "orchestra",
+    "duration": 27.82608695652174,
+    "root_midi": 43,
+    "bars": 16
+  },
+  {
+    "title": "Velvet Voltage",
+    "bpm": 118,
+    "genre": "funk",
+    "duration": 32.54237288135593,
+    "root_midi": 45,
+    "bars": 16
+  },
+  {
+    "title": "Cinder Boogie",
+    "bpm": 144,
+    "genre": "rock",
+    "duration": 26.666666666666668,
+    "root_midi": 40,
+    "bars": 16
+  },
+  {
+    "title": "Parade Forever",
+    "bpm": 126,
+    "genre": "disco",
+    "duration": 30.476190476190474,
+    "root_midi": 48,
+    "bars": 16
+  },
+  {
+    "title": "Feedback Crown",
+    "bpm": 148,
+    "genre": "metal",
+    "duration": 25.945945945945947,
+    "root_midi": 40,
+    "bars": 16
+  },
+  {
+    "title": "Cloud Nine",
+    "bpm": 122,
+    "genre": "gospel",
+    "duration": 31.475409836065573,
+    "root_midi": 53,
+    "bars": 16
+  },
+  {
+    "title": "Neon Audition",
+    "bpm": 132,
+    "genre": "dance",
+    "duration": 29.09090909090909,
+    "root_midi": 50,
+    "bars": 16
+  },
+  {
+    "title": "Midnight Incantation",
+    "bpm": 104,
+    "genre": "jazz",
+    "duration": 36.92307692307692,
+    "root_midi": 45,
+    "bars": 16
+  },
+  {
+    "title": "Golden Groove",
+    "bpm": 124,
+    "genre": "disco",
+    "duration": 30.967741935483872,
+    "root_midi": 43,
+    "bars": 16
+  },
+  {
+    "title": "Soul Signal",
+    "bpm": 130,
+    "genre": "soul",
+    "duration": 29.53846153846154,
+    "root_midi": 46,
+    "bars": 16
+  }
+]

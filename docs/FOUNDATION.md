@@ -1,4 +1,4 @@
-# Foundation, version 0.7.0
+# Foundation, version 0.8.0
 
 Rhapsody: Allegro uses one Godot simulation for browser and desktop. The prototype combines action boss fights with top-down / side-scrolling transitions. Combat has no required beat timing. Final art, story and soundtrack remain open for feedback.
 
@@ -68,3 +68,6 @@ Phone facing follows the current boss direction independently from movement, inp
 The Godot root window, rather than a separately sampled CSS rectangle, supplies the logical aspect ratio. Phone presentation uses viewport scaling so all rendering and input share the same extent. The browser constrains the CSS canvas to the smaller of the document and visual viewport, subtracts safe-area insets, then derives the backing buffer at device pixel ratio. Resize observers, delayed orientation updates and late engine-boot repair remain. All action circles, including manual STRIKE and JUMP together, are tested against physical viewport bounds through repeated portrait, landscape and ultrawide rotations. AUTO stays top-left; parrying remains disabled.
 
 Game packs use content-addressed filenames and an explicit `mainPack` engine setting to prevent a previous release's pack surviving a cached download. Five new non-parry upgrades keep all eleven intermissions selectable. Song movement speeds and sound pitches live in encounter data rather than a four-entry array. Existing saves retain original encounter indices; the new bounds extend to movement twelve.
+
+
+The Living Score (0.8.0) adds painted musician art, twelve original boss scores, saved music preferences and a protected 1.25-second animated form modulation. See `docs/STAGE_ART_AND_AUDIO.md` for implementation and verification.

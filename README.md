@@ -1,6 +1,6 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.7.0** keeps mobile controls within the visible viewport through rotation and embedded previews. Nine musical encounters now feature human stage portraits, with five new bosses inspired by The Weather Girls, Irene Cara, Nina Simone, Eddie Johns and Edwin Starr. A full performance includes twelve bosses and eleven augmentation choices. Fixed character kits, automatic phone facing, higher jumps and deferred parrying remain.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.0 — The Living Score.** Painted artwork replaces the geometric figures for all twelve bosses and four playable musicians. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
 
 **[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
@@ -106,3 +106,5 @@ See [foundation notes](docs/FOUNDATION.md). No third-party art or recordings are
 Jump launch speed is 740 units/second, up from 570 (about 69% more height at unchanged gravity). Parry input, automatic parry windows and parry upgrades are disabled through `combat_rules.gd`; the code and legacy regression coverage are retained for future development. Existing Golden Window upgrades convert to an unowned active upgrade when a checkpoint loads.
 
 Phone canvas sizing uses the actual CSS canvas rectangle and device-pixel ratio before Godot starts. Resize / orientation observers keep the buffer aligned after safe-area changes, iframe resizing and delayed engine boot. Deterministic Node tests cover these cases; native captures cover repeated portrait-to-wide-landscape rotation. Physical mobile browser testing remains unverified in this environment.
+
+Art, audio and transition details: [The Living Score](docs/STAGE_ART_AND_AUDIO.md).

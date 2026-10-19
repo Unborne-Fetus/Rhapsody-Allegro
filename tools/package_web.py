@@ -81,7 +81,7 @@ html,body {overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-us
 html=html.replace('</head>',css+'\n</head>')
 html=html.replace('<div id="status">','<div id="status">'+brand)
 (dest/'index.html').write_text(html)
-(dest/'build-info.json').write_text(json.dumps({'version':'0.7.0','godot':'4.5.1','engine_sha256':hashlib.sha256(wasm).hexdigest(),'game_sha256':hashlib.sha256((dest/f'index-{game_hash}.pck').read_bytes()).hexdigest()},indent=2)+'\n')
+(dest/'build-info.json').write_text(json.dumps({'version':'0.8.0','godot':'4.5.1','engine_sha256':hashlib.sha256(wasm).hexdigest(),'game_sha256':hashlib.sha256((dest/f'index-{game_hash}.pck').read_bytes()).hexdigest()},indent=2)+'\n')
 # Content changes across builds: do not cache stable engine filenames forever.
 (dest/'_headers').write_text('/*.bin\n  Content-Type: application/octet-stream\n  Cache-Control: public, max-age=31536000, immutable\n/index.html\n  Cache-Control: no-cache\n')
 print(f'Packaged {len(wasm):,} engine bytes into {len(chunks)} chunks.')

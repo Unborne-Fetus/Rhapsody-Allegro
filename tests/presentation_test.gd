@@ -26,7 +26,7 @@ func run_capture() -> void:
 		for pattern in ["mines","prism"]: game.execute_pattern(pattern)
 		game.simulate(0.016)
 		await capture("boss-"+str(boss))
-	game.change_perspective(true); game.banner_time = 0; await capture("side-view")
+	game.change_perspective(true); game.simulate(game.SHIFT_DURATION); game.banner_time = 0; await capture("side-view")
 	game.used_touch = true; await capture("touch")
 	game.used_touch = false
 	game.screen = "intermission"; game.upgrade_options = game.run.choices(0); await capture("intermission")
@@ -43,7 +43,7 @@ func run_capture() -> void:
 		await capture("set-"+str(i))
 	game.command("menu"); game.start_tutorial()
 	for step in [0,3,6,7]:
-		game.tutorial.step = step; game.setup_tutorial_stage(); await capture("tutorial-"+str(step))
+		game.tutorial.step = step; game.setup_tutorial_stage(); game.simulate(game.SHIFT_DURATION); await capture("tutorial-"+str(step))
 	game.command("menu"); game.screen = "intermission"
 	game.upgrade_options = [game.RunState.UPGRADES[7],game.RunState.UPGRADES[1],game.RunState.UPGRADES[4]]
 	game.ui_mouse_active = false
@@ -57,7 +57,7 @@ func run_capture() -> void:
 		game.execute_pattern(game.bosses[index].patterns[0]); game.execute_pattern(game.bosses[index].patterns[1])
 		game.simulate(0.016); await capture("song-"+str(index))
 		game.screen = "paused"; await capture("song-notes-"+str(index)); game.screen = "playing"
-		game.change_perspective(true); game.banner_time = 0; game.phase = 1; game.aim_snapshot = game.player
+		game.change_perspective(true); game.simulate(game.SHIFT_DURATION); game.banner_time = 0; game.phase = 1; game.aim_snapshot = game.player
 		game.execute_pattern(game.bosses[index].patterns[0]); game.simulate(0.016)
 		await capture("song-side-"+str(index))
 	print("PRESENTATION_CAPTURE_COMPLETE")

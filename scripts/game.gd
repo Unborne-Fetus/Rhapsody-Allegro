@@ -1,5 +1,6 @@
 extends Node2D
 ## One simulation for native and browser. Presentation uses resolution-independent vector art.
+const StageArt = preload("res://scripts/stage_art.gd")
 const CombatRules = preload("res://scripts/combat_rules.gd")
 const PhoneUI = preload("res://scripts/phone_ui.gd")
 const SongBosses = preload("res://scripts/song_bosses.gd")
@@ -86,6 +87,11 @@ var font: Font
 var screen := "title"
 var boss_index := 0
 var practice := false
+const SHIFT_DURATION := 1.25
+var shift_left := 0.0
+var shift_from_side := false
+var shift_from_player := Vector2.ZERO
+var shift_from_boss := Vector2.ZERO
 var side := false
 var player := Vector2(380,440)
 var velocity := Vector2.ZERO
@@ -171,6 +177,7 @@ func _ready() -> void:
 		print("RHAPSODY_READY bosses=",bosses.size()," screen=",screen)
 
 func apply_volume() -> void:
+	AudioServer.set_bus_mute(0,float(profile.data.volume)<=0)
 	AudioServer.set_bus_volume_db(0,linear_to_db(maxf(0.001,float(profile.data.volume))))
 
 func held(key: Key) -> bool:
@@ -305,6 +312,7 @@ func command(action: String) -> void:
 		"assist": profile.data.assist = not profile.data.assist; profile.save_profile()
 		"shake": profile.data.shake = not profile.data.shake; profile.save_profile()
 		"volume": profile.data.volume = fmod(float(profile.data.volume)+0.2,1.2); apply_volume(); profile.save_profile()
+		"music": profile.data.music = not profile.data.music; profile.save_profile()
 		"pulse": metronome = not metronome
 		"close_help": screen = "playing"
 		_:
@@ -332,7 +340,7 @@ func start_fight(index: int) -> void:
 	hp = run.stat("health")
 	energy = run.stat("energy")
 	resonance = 0
-	side = false
+	side = false; shift_left = 0
 	player = Vector2(350,440)
 	boss = Vector2(900,355)
 	velocity = Vector2.ZERO
@@ -419,6 +427,7 @@ func touch_action(index: int,p: Vector2) -> void:
 			return
 
 func jump() -> void:
+	if shift_left>0: return
 	if not side: return
 	jump_buffer = 0.12
 	if ground_grace>0 or player.y>=550:
@@ -426,6 +435,7 @@ func jump() -> void:
 		sound.tone(310,0.07)
 
 func dodge() -> void:
+	if shift_left>0: return
 	if dash_cd>0 or energy<run.stat("dodge_cost"): return
 	melee_snapshot.clear(); melee_windup = 0
 	energy -= run.stat("dodge_cost")
@@ -441,6 +451,7 @@ func dodge() -> void:
 	sound.tone(150,0.09)
 
 func melee() -> void:
+	if shift_left>0: return
 	if melee_cd>0 or not melee_snapshot.is_empty() or screen != "playing": return
 	var weapon: Dictionary = Arsenal.SETS[weapon_index]
 	combo = (combo%3)+1 if combo_time>0 else 1
@@ -464,6 +475,7 @@ func melee() -> void:
 	sound.tone(130+weapon_index*70,0.05,0.05)
 
 func shoot() -> void:
+	if shift_left>0: return
 	if shoot_cd>0 or screen != "playing" or not melee_snapshot.is_empty(): return
 	var character: Dictionary = Characters.ROSTER[weapon_index]
 	if energy<float(character.cost): return
@@ -500,6 +512,7 @@ func parry() -> void:
 	sound.tone(820,0.06)
 
 func burst() -> void:
+	if shift_left>0: return
 	if resonance<100: return
 	resonance = 0
 	if tutorial_active: tutorial.event("burst")
@@ -550,6 +563,7 @@ func damage_boss(amount: float) -> void:
 		sound.tone(523,0.35,0.2)
 
 func hurt(amount: float) -> void:
+	if shift_left>0: return
 	if invincible>0 or screen != "playing": return
 	hp = maxf(0,hp-amount*run.stat("armor")*float(RunState.DIFFICULTIES[run.difficulty].damage)*float(Characters.ROSTER[weapon_index].incoming)*(0.5 if profile.data.assist else 1.0)*(0.5 if tutorial_active else 1.0))
 	hits += 1
@@ -583,11 +597,18 @@ func _process(raw_delta: float) -> void:
 		floats = floats.filter(func(n): return n.life>0)
 		for ring in rings: ring.r += 950*delta; ring.life -= delta
 		rings = rings.filter(func(r): return r.life>0)
+	sound.sync_music(boss_index,phase,screen == "playing",screen == "paused",bool(profile.data.music),delta)
 	if phone_mode: update_phone_facing()
 	shake = maxf(0,shake-delta*45)
 	queue_redraw()
 
 func simulate(delta: float) -> void:
+	if shift_left>0:
+		shift_left = maxf(0,shift_left-delta)
+		if shift_left == 0:
+			invincible = maxf(invincible,.8)
+			mouse_attack_latched = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+		return
 	songs.tick(delta)
 	if profile.data.assist: fight_assisted = true; run.assisted = true
 	elapsed += delta
@@ -688,6 +709,10 @@ func simulate(delta: float) -> void:
 	shots = shots.filter(func(s): return s.life>0 and Rect2(50,110,1180,560).has_point(s.position))
 
 func change_perspective(to_side: bool) -> void:
+	if to_side == side: return
+	shift_from_side = side; shift_from_player = player; shift_from_boss = boss
+	shift_left = SHIFT_DURATION
+	clear_touch()
 	side = to_side
 	shots.clear(); hazards.clear()
 	melee_snapshot.clear(); melee_windup = 0; melee_flash = 0
@@ -833,11 +858,12 @@ func _draw() -> void:
 		return
 	draw_arena()
 	draw_hud()
+	draw_form_transition()
 	if screen != "playing": draw_overlay()
 
 func draw_menu() -> void:
 	text_at("R / A",Vector2(58,62),22,TEAL)
-	text_at("MUSICAL ENCORE  /  0.7.0",Vector2(896,59),14,MUTED)
+	text_at("THE LIVING SCORE  /  0.8.0",Vector2(896,59),14,MUTED)
 	line(Vector2(58,82),Vector2(1222,82),Color("293340"))
 	if screen == "title":
 		text_at("A HYBRID-PERSPECTIVE BOSS RUSH",Vector2(94,157),16,TEAL)
@@ -930,7 +956,7 @@ func draw_menu() -> void:
 		button("ASSIST MODE   "+("ON" if profile.data.assist else "OFF"),Rect2(390,338,500,45),"assist")
 		button("IMPACT FLASHES   "+("ON" if profile.data.flashes else "REDUCED"),Rect2(390,395,500,45),"flashes")
 		button("PRACTICE PULSE   "+("ON" if metronome else "OFF"),Rect2(390,452,500,45),"pulse")
-		centered("Assist halves damage and regenerates vitality. Pulse is optional.",536,16,MUTED)
+		button("BOSS MUSIC   "+("ON" if profile.data.music else "OFF"),Rect2(390,509,500,45),"music")
 		centered("Combat never requires playing on the beat.",563,16,MUTED)
 		button("BACK",Rect2(490,602,300,48),"back",true)
 	elif screen == "intermission":
@@ -986,17 +1012,23 @@ func draw_arena() -> void:
 	draw_rect(FIELD,Color("101a26"))
 	draw_architecture(color)
 	for x in range(100,1181,54): line(Vector2(x,164),Vector2(x,604),Color("1b2936"))
-	for y in range(164,605,44): line(Vector2(100,y),Vector2(1180,y),Color("1b2936"))
+	for y in range(164,605,44):
+		var fold = sin(PI*shift_blend()) if shift_left>0 else 0.0
+		var yy = lerpf(float(y),384+(y-384)*.45,fold)
+		line(Vector2(100,yy),Vector2(1180,yy),Color("1b2936"))
 	draw_rect(FIELD,Color("3b4c59"),false,2)
 	for p in [Vector2(100,164),Vector2(1180,164),Vector2(100,604),Vector2(1180,604)]:
 		line(p-Vector2(10,0),p+Vector2(10,0),color,3)
 		line(p-Vector2(0,10),p+Vector2(0,10),color,3)
-	if side:
-		draw_rect(Rect2(100,582,1080,22),Color("203743"))
+	var side_blend = shift_blend() if side else 1.0-shift_blend()
+	if shift_left<=0: side_blend = 1.0 if side else 0.0
+	if side_blend>0:
+		draw_rect(Rect2(100,lerpf(604,582,side_blend),1080,22),Color("203743"))
 		line(Vector2(100,582),Vector2(1180,582),TEAL,2)
 		for platform in platforms():
-			draw_rect(platform,Color("2a414b"))
-			line(platform.position,Vector2(platform.end.x,platform.position.y),TEAL,2)
+			var visual = Rect2(Vector2(platform.position.x,lerpf(604,platform.position.y,side_blend)),platform.size)
+			draw_rect(visual,Color(Color("2a414b"),side_blend))
+			line(visual.position,Vector2(visual.end.x,visual.position.y),Color(TEAL,side_blend),2)
 		for i in 14: line(Vector2(110+i*80,598),Vector2(125+i*80,584),Color("49616a"))
 	else:
 		draw_arc(Vector2(640,385),177,0,TAU,90,Color("263848"),1,true)
@@ -1026,9 +1058,9 @@ func draw_arena() -> void:
 		draw_circle(shot.position,shot.radius,c)
 		if not shot.friendly: draw_circle(shot.position,shot.radius*0.4,INK)
 	if boss_hp>0:
-		draw_circle(boss+Vector2(0,45),41,Color(0,0,0,0.3))
-		draw_boss_figure(boss,boss_index,1.0,PAPER if boss_flash>0 and profile.data.flashes else color)
-		draw_arc(boss,59,0,TAU,48,Color(color,0.25),1,true)
+		draw_circle(shift_position(boss,shift_from_boss)+Vector2(0,26),41,Color(0,0,0,0.3))
+		draw_boss_figure(shift_position(boss,shift_from_boss),boss_index,1.0,PAPER if boss_flash>0 and profile.data.flashes else color)
+		draw_arc(shift_position(boss,shift_from_boss),59,0,TAU,48,Color(color,0.25),1,true)
 	if tutorial_active and tutorial.step == 0:
 		draw_rect(Rect2(900,470,130,100),Color(TEAL,0.08))
 		draw_rect(Rect2(900,470,130,100),TEAL,false,2)
@@ -1040,31 +1072,15 @@ func draw_arena() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 func draw_player() -> void:
+	var p = shift_position(player,shift_from_player)
 	var blink = invincible>0 and int(total_time*16)%2 == 0
-	var base = Color(Arsenal.SETS[weapon_index].color)
-	var color = Color(base,0.45) if blink else base
-	var stride = sin(elapsed*21)*4 if velocity.length()>40 and dash_time<=0 else 0.0
-	draw_circle(player+Vector2(0,19),17,Color(0,0,0,0.3))
-	var tail = player-facing*30+Vector2(0,sin(elapsed*12)*4)
-	draw_colored_polygon(PackedVector2Array([player+Vector2(-7,-14),tail+Vector2(0,5),tail-Vector2(0,11)]),CORAL)
-	line(player+Vector2(-5,4),player+Vector2(-8,18+stride),Color("416c77"),5)
-	line(player+Vector2(5,4),player+Vector2(8,18-stride),Color("416c77"),5)
-	draw_colored_polygon(PackedVector2Array([player+Vector2(-10,-12),player+Vector2(10,-12),player+Vector2(8,8),player+Vector2(-8,8)]),color)
-	if weapon_index == 0:
-		draw_rect(Rect2(player+Vector2(-16,-13),Vector2(10,22)),color)
-		draw_rect(Rect2(player+Vector2(6,-13),Vector2(10,22)),color)
-	elif weapon_index == 1:
-		poly_at(player,[Vector2(-11,-16),Vector2(0,-32),Vector2(11,-16)],1.0,color)
-	elif weapon_index == 2:
-		poly_at(player,[Vector2(-8,-10),Vector2(-18,22),Vector2(0,12)],1.0,Color(base,0.7))
-	else:
-		poly_at(player,[Vector2(-12,-13),Vector2(12,-13),Vector2(15,22),Vector2(-15,22)],1.0,base.darkened(0.35))
-		draw_arc(player+Vector2(0,-17),11,PI,TAU,16,base,3,true)
-	draw_circle(player+Vector2(0,-17),8,Color("dfdfd1"))
-	line(player+Vector2(-6,-18),player+Vector2(6,-18),INK,3)
-	draw_equipped_weapon()
-	if parry_enabled and parry_time>0: draw_circle(player,34,GOLD,false,4,true)
-	if dash_time>0: line(player-dash_dir*55,player,Color(TEAL,0.6),5)
+	draw_circle(p+Vector2(0,22),20,Color(0,0,0,.35))
+	StageArt.player(self,p,weapon_index,.6 if blink else 1.0)
+	# A small aim marker communicates facing without drawing a second weapon.
+	line(p+facing*23,p+facing*34,Color(Arsenal.SETS[weapon_index].color),2)
+	if shift_left<=0 and (melee_windup>0 or melee_flash>0): draw_equipped_weapon()
+	if parry_enabled and parry_time>0: draw_circle(p,34,GOLD,false,4,true)
+	if dash_time>0: line(p-dash_dir*55,p,Color(TEAL,.6),5)
 
 func draw_hud() -> void:
 	text_at("R / A",Vector2(42,45),20,TEAL)
@@ -1106,7 +1122,7 @@ func draw_hud() -> void:
 		elif not songs.attack_label.is_empty() and windup<=0: centered(songs.attack_label,677,13,GOLD)
 	if training:
 		text_at("TRAINING · NO RECORDS · T ATTACKS "+("ON" if training_attacks else "OFF")+" · V SHIFT VIEW",Vector2(360,153),13,TEAL)
-	if banner_time>0 and screen == "playing":
+	if banner_time>0 and shift_left<=0 and screen == "playing":
 		draw_rect(Rect2(200,284,880,78),Color(0.03,0.05,0.08,0.93))
 		centered(banner,330,22,TEAL)
 	elif elapsed<14 and screen == "playing" and not used_touch and not training and boss_index<3:
@@ -1289,52 +1305,7 @@ func poly_at(p: Vector2,points: Array,scale_factor: float,color: Color) -> void:
 	draw_colored_polygon(packed,color)
 
 func draw_boss_figure(p: Vector2,index: int,size: float,color: Color) -> void:
-	if index>=3:
-		songs.draw_figure(self,p,index,size,color); return
-	var dark = Color(color.darkened(0.7),1)
-	var swing = sin(total_time*2.0)*8
-	if index == 0:
-		# Clockwork sentinel: segmented limbs, dial torso and pendulum crown.
-		for sign_x in [-1,1]:
-			line(p+Vector2(sign_x*26,-12)*size,p+Vector2(sign_x*55,7+swing)*size,color,6*size)
-			line(p+Vector2(sign_x*55,7+swing)*size,p+Vector2(sign_x*65,-23)*size,color,4*size)
-			draw_circle(p+Vector2(sign_x*55,7+swing)*size,5*size,GOLD)
-			line(p+Vector2(sign_x*15,25)*size,p+Vector2(sign_x*24,54)*size,color,6*size)
-		poly_at(p,[Vector2(-30,-22),Vector2(0,-38),Vector2(30,-22),Vector2(30,20),Vector2(0,38),Vector2(-30,20)],size,dark)
-		draw_circle(p,30*size,color,false,3*size,true)
-		for i in 8:
-			var d = Vector2.UP.rotated(TAU*i/8)
-			line(p+d*23*size,p+d*28*size,GOLD,1.5*size)
-		line(p,p+Vector2.UP.rotated(total_time*2)*22*size,PAPER,2*size)
-		draw_circle(p,5*size,GOLD)
-		line(p+Vector2(0,-36)*size,p+Vector2(swing,-58)*size,color,3*size)
-		draw_circle(p+Vector2(swing,-62)*size,9*size,PAPER)
-		line(p+Vector2(swing-4,-62)*size,p+Vector2(swing+4,-62)*size,INK,2*size)
-	elif index == 1:
-		# A glass singer with six floating crystal feathers.
-		for sign_x in [-1,1]:
-			for i in 3:
-				var x = sign_x*(38+i*15)
-				var y = -30+i*19+sin(total_time*2+i)*5
-				poly_at(p,[Vector2(x,y-21),Vector2(x+sign_x*15,y),Vector2(x,y+29),Vector2(x-sign_x*7,y)],size,Color(color,0.75-i*0.12))
-		poly_at(p,[Vector2(0,-45),Vector2(28,-3),Vector2(0,49),Vector2(-28,-3)],size,color)
-		poly_at(p,[Vector2(0,-37),Vector2(15,-3),Vector2(0,37),Vector2(-8,-3)],size,dark)
-		draw_circle(p+Vector2(0,-53)*size,10*size,PAPER)
-		line(p+Vector2(-5,-54)*size,p+Vector2(5,-54)*size,INK,2*size)
-		draw_arc(p+Vector2(0,-53)*size,18*size,PI,TAU,20,color,2*size,true)
-	else:
-		# The conductor, suspended by strings, with a long coat and baton.
-		for sign_x in [-1,1]:
-			line(p+Vector2(sign_x*20,-15)*size,p+Vector2(sign_x*48,-38+swing)*size,color,4*size)
-			line(p+Vector2(sign_x*48,-38+swing)*size,p+Vector2(sign_x*65,-20)*size,color,3*size)
-			line(p+Vector2(sign_x*48,-38+swing)*size,p+Vector2(sign_x*48,-95)*size,Color(color,0.3),size)
-		poly_at(p,[Vector2(-18,-25),Vector2(18,-25),Vector2(35,55),Vector2(0,40),Vector2(-35,55)],size,dark)
-		line(p+Vector2(0,-23)*size,p+Vector2(0,38)*size,color,2*size)
-		poly_at(p,[Vector2(-11,-56),Vector2(11,-56),Vector2(15,-35),Vector2(0,-27),Vector2(-15,-35)],size,PAPER)
-		line(p+Vector2(-6,-44)*size,p+Vector2(6,-44)*size,INK,2*size)
-		line(p+Vector2(65,-20)*size,p+Vector2(85,-57)*size,GOLD,3*size)
-		draw_circle(p+Vector2(85,-57)*size,4*size,GOLD)
-		draw_circle(p,10*size,color,false,2*size,true)
+	StageArt.boss(self,p,index,size)
 	if stagger_time>0 and screen == "playing":
 		draw_arc(p,72*size,total_time*2,total_time*2+PI,24,GOLD,2,true)
 
@@ -1462,6 +1433,10 @@ func start_tutorial() -> void:
 	start_fight(0); setup_tutorial_stage()
 
 func setup_tutorial_stage() -> void:
+	var previous_side = side
+	var previous_player = player
+	var previous_boss = boss
+	shift_left = 0
 	shots.clear(); hazards.clear(); melee_snapshot.clear(); active_melee.clear()
 	melee_windup = 0; melee_flash = 0; melee_cd = 0; shoot_cd = 0
 	bleed_time = 0; bleed_stacks = 0; bleed_tick = 0.5; charge_time = 0; windup = 0
@@ -1477,6 +1452,9 @@ func setup_tutorial_stage() -> void:
 	if tutorial.step == 3: player = Vector2(640,440)
 	if tutorial.step == 4: player = Vector2(400,440)
 	if tutorial.step == 7: player = Vector2(340,440); boss = Vector2(850,380)
+	if previous_side != side:
+		shift_from_side = previous_side; shift_from_player = previous_player; shift_from_boss = previous_boss
+		shift_left = SHIFT_DURATION; clear_touch()
 	if phone_mode and phone.portrait: update_phone_camera(1)
 
 func update_tutorial(delta: float) -> void:
@@ -1534,15 +1512,7 @@ func draw_tutorial_hud() -> void:
 	text_at("COMPLETE" if tutorial.transition>0 else "%d / %d" % [tutorial.progress,lesson.count],Vector2(522,335),13,GOLD)
 
 func draw_character_portrait(p: Vector2,index: int) -> void:
-	var c = Color(Arsenal.SETS[index].color)
-	var width = 24 if index == 0 else (12 if index == 1 else 18)
-	poly_at(p,[Vector2(-width,-12),Vector2(width,-12),Vector2(width+6,35),Vector2(-width-6,35)],1,c.darkened(0.3))
-	draw_circle(p+Vector2(0,-26),13,PAPER)
-	line(p+Vector2(-7,-27),p+Vector2(7,-27),INK,3)
-	if index == 0: draw_rect(Rect2(p+Vector2(-34,-10),Vector2(68,12)),c)
-	elif index == 1: poly_at(p,[Vector2(-18,-24),Vector2(0,-48),Vector2(18,-24)],1,c)
-	elif index == 2: line(p+Vector2(20,4),p+Vector2(43,-33),c,5)
-	else: draw_arc(p+Vector2(0,-26),19,PI,TAU,20,c,5,true); line(p+Vector2(15,15),p+Vector2(47,-2),c,5)
+	StageArt.draw(self,p+Vector2(0,24),12+index,112)
 
 func configure_phone() -> void:
 	if phone_configuring: return
@@ -1652,3 +1622,31 @@ func update_phone_facing() -> void:
 	facing = direction
 	if not melee_snapshot.is_empty(): melee_snapshot.facing = direction
 	if not active_melee.is_empty(): active_melee.facing = direction
+
+
+func shift_blend() -> float:
+	var t = clampf(1.0-shift_left/SHIFT_DURATION,0,1)
+	return t*t*(3.0-2.0*t)
+func shift_position(destination: Vector2,origin: Vector2) -> Vector2:
+	return origin.lerp(destination,shift_blend()) if shift_left>0 else destination
+func draw_form_transition() -> void:
+	if shift_left<=0 or screen != "playing": return
+	var dimensions = phone.canvas_size if phone_mode else Vector2(1280,720)
+	var progress = shift_blend()
+	var veil = sin(PI*progress)
+	# A moving musical staff bridges the two perspectives while the stage folds.
+	draw_set_transform(Vector2.ZERO)
+	draw_rect(Rect2(Vector2.ZERO,dimensions),Color(.02,.035,.07,veil*.32))
+	var center = dimensions/2
+	for i in 5:
+		var y = center.y+(i-2)*18
+		line(Vector2(0,y),Vector2(dimensions.x,y),Color(GOLD,veil*.4),2)
+	for i in 8:
+		var x = fposmod(dimensions.x*progress+i*dimensions.x/7,dimensions.x)
+		var y = center.y+sin(i*1.7+progress*TAU)*36
+		draw_circle(Vector2(x,y),6,Color(TEAL,veil*.7))
+		line(Vector2(x+5,y),Vector2(x+5,y-25),Color(TEAL,veil*.7),2)
+	var title = "MODULATION / SIDE STAGE" if side else "MODULATION / OPEN STAGE"
+	var width = font.get_string_size(title,HORIZONTAL_ALIGNMENT_LEFT,-1,25).x
+	text_at(title,Vector2(center.x-width/2,center.y-65),25,Color(PAPER,veil))
+	bar(Rect2(center.x-130,center.y+65,260,4),progress,TEAL)

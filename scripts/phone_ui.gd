@@ -36,7 +36,7 @@ func pause_rect() -> Rect2:
 func auto_rect() -> Rect2:
 	return Rect2(16,12,120,80)
 func heading(g: Node2D,title: String,sub: String = "") -> void:
-	g.text_at("R / A · THUMB CONTROLS · 0.7.0",Vector2(32,40),19,g.TEAL)
+	g.text_at("R / A · THUMB CONTROLS · 0.8.0",Vector2(32,40),19,g.TEAL)
 	g.wrapped_text(title,Vector2(32,94),size().x-64,32,g.PAPER)
 	if not sub.is_empty(): g.wrapped_text(sub,Vector2(32,132),size().x-64,21,g.MUTED)
 func button(g: Node2D,label: String,rect: Rect2,action: String,primary: bool = false) -> void:
@@ -59,9 +59,11 @@ func draw_character(g: Node2D,index: int,rect: Rect2) -> void:
 	var x = rect.position.x+24; var y = rect.position.y+40
 	g.text_at(c.name+" / "+g.Arsenal.SETS[index].name,Vector2(x,y),29,Color(g.Arsenal.SETS[index].color))
 	g.text_at("%d HP · %s" % [c.health,c.ability],Vector2(x,y+40),23,g.TEAL)
-	var next = g.wrapped_text(c.ability_text,Vector2(x,y+77),rect.size.x-48,22)
-	next = g.wrapped_text(c.passive,Vector2(x,next+12),rect.size.x-48,21,g.TEAL)
-	g.wrapped_text(c.debuff,Vector2(x,next+12),rect.size.x-48,21,g.CORAL)
+	g.StageArt.draw(g,Vector2(rect.end.x-75,rect.position.y+190),12+index,170)
+	g.wrapped_text(c.music,Vector2(x,y+63),rect.size.x-180,16,g.GOLD)
+	var next = g.wrapped_text(c.ability_text,Vector2(x,y+112),rect.size.x-180,20)
+	next = g.wrapped_text(c.passive,Vector2(x,next+8),rect.size.x-180,19,g.TEAL)
+	g.wrapped_text(c.debuff,Vector2(x,next+8),rect.size.x-180,19,g.CORAL)
 func draw_menu(g: Node2D) -> void:
 	match g.screen:
 		"title":
@@ -91,9 +93,10 @@ func draw_menu(g: Node2D) -> void:
 			var index = boss_focus
 			var info: Dictionary = g.bosses[index]
 			var rect = card(g)
-			var y = g.wrapped_text(info.name,rect.position+Vector2(24,40),rect.size.x-48,29,Color(info.color))
-			y = g.wrapped_text(info.get("song",info.subtitle)+(" · "+info.artist if index>=3 else ""),Vector2(rect.position.x+24,y+16),rect.size.x-48,23)
-			g.wrapped_text(info.get("tip","Read gold warnings. Dodge through danger and punish an opening."),Vector2(rect.position.x+24,y+16),rect.size.x-48,22,g.MUTED)
+			g.StageArt.draw(g,Vector2(rect.end.x-65,rect.position.y+145),index,125)
+			var y = g.wrapped_text(info.name,rect.position+Vector2(24,40),rect.size.x-170,26,Color(info.color))
+			y = g.wrapped_text(info.get("song",info.subtitle)+(" · "+info.artist if index>=3 else ""),Vector2(rect.position.x+24,y+12),rect.size.x-170,21)
+			g.wrapped_text(info.get("tip","Read gold warnings. Dodge through danger and punish an opening."),Vector2(rect.position.x+24,y+12),rect.size.x-170,20,g.MUTED)
 			var x = 32 if portrait else 714; var top = 515 if portrait else 180; var width = 656 if portrait else 510
 			button(g,"PREVIOUS",Rect2(x,top,width/2-9,82),"phone_boss_previous")
 			button(g,"NEXT",Rect2(x+width/2+9,top,width/2-9,82),"phone_boss_next")
@@ -117,7 +120,7 @@ func draw_menu(g: Node2D) -> void:
 			button(g,"CONFIRM: "+selected.name,Rect2(32 if portrait else 714,895 if portrait else 515,656 if portrait else 510,88),"upgrade_"+selected.id,true)
 		"settings":
 			heading(g,"PHONE SETTINGS","Saved automatically. Character choices stay locked in a run.")
-			actions(g,[["AUTO ATTACK: "+("ON" if g.profile.data.auto_attack else "OFF"),"phone_auto"],["VOLUME: %d%%" % int(g.profile.data.volume*100),"volume"],["ASSIST: "+("ON" if g.profile.data.assist else "OFF"),"assist"],["SHAKE: "+("ON" if g.profile.data.shake else "OFF"),"shake"],["IMPACT FLASHES: "+("ON" if g.profile.data.flashes else "REDUCED"),"flashes"],["FULL SCREEN","phone_fullscreen"],["BACK","back"]],250 if portrait else 220)
+			actions(g,[["AUTO ATTACK: "+("ON" if g.profile.data.auto_attack else "OFF"),"phone_auto"],["BOSS MUSIC: "+("ON" if g.profile.data.music else "OFF"),"music"],["VOLUME: %d%%" % int(g.profile.data.volume*100),"volume"],["ASSIST: "+("ON" if g.profile.data.assist else "OFF"),"assist"],["SHAKE: "+("ON" if g.profile.data.shake else "OFF"),"shake"],["IMPACT FLASHES: "+("ON" if g.profile.data.flashes else "REDUCED"),"flashes"],["FULL SCREEN","phone_fullscreen"],["BACK","back"]],250 if portrait else 220)
 		"help":
 			heading(g,"TWO-THUMB GUIDE")
 			var rect = Rect2(32,180,656,890) if portrait else Rect2(56,180,1168,350)
@@ -187,7 +190,7 @@ func draw_controls(g: Node2D) -> void:
 		var text_width = g.font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,fontsize).x
 		g.text_at(label,item[0]+Vector2(-text_width/2,8),fontsize,color if ready else g.MUTED)
 		if action == "burst": g.draw_arc(item[0],item[3]-8,-PI/2,-PI/2+TAU*g.resonance/100,48,g.GOLD,4,true)
-	g.text_at("0.7.0",Vector2(24,canvas_size.y-22),15,g.MUTED)
+	g.text_at("0.8.0",Vector2(24,canvas_size.y-22),15,g.MUTED)
 	var face = Rect2(24,22,104,52)
 	g.draw_style_box(g.panel_style(Color("20332e") if g.profile.data.auto_attack else Color("202b37"),g.TEAL if g.profile.data.auto_attack else g.MUTED),face)
 	g.text_at("AUTO "+("ON" if g.profile.data.auto_attack else "OFF"),face.position+Vector2(9,33),18,g.TEAL if g.profile.data.auto_attack else g.MUTED)
@@ -216,5 +219,7 @@ func draw(g: Node2D) -> void:
 	if g.screen in ["title","select","settings","loadout","intermission","help","arsenal"]:
 		menu_offset = (canvas_size-size())/2
 		g.draw_set_transform(menu_offset); draw_menu(g)
-	else: draw_combat(g)
+	else:
+		draw_combat(g)
+		g.draw_form_transition()
 	g.draw_set_transform(Vector2.ZERO)

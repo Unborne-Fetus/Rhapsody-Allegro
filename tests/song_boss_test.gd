@@ -41,6 +41,7 @@ func run_tests() -> void:
 		check(game.followup_delay == 0 and game.windup == 0,"Stagger cancels queued follow-up")
 		prepare(index); game.boss_hp = game.max_hp*0.66; game.simulate(0.016)
 		check(game.side and game.phase == 1,"Song encounter enters platform phase")
+		game.simulate(game.SHIFT_DURATION)
 		game.boss_hp = game.max_hp*0.32; game.simulate(0.016)
 		check(not game.side and game.phase == 2,"Song encounter returns for final phase")
 	for index in range(3,7):
