@@ -190,6 +190,13 @@ try {
 catch {
     Write-Host ''
     Write-Host ('BUILD ERROR: ' + $_.Exception.Message) -ForegroundColor Red
+    $logDirectory = Join-Path $root 'build'
+    if (-not (Test-Path $logDirectory)) {
+        New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
+    }
+    $errorPath = Join-Path $logDirectory 'last-build-error.txt'
+    ($_ | Out-String) | Set-Content -LiteralPath $errorPath
+    Write-Host ('Error details saved to: ' + $errorPath) -ForegroundColor Yellow
     exit 1
 }
 exit 0
