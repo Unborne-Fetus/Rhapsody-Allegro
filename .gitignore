@@ -1,0 +1,7 @@
+.godot/
+build/
+.DS_Store
+*.tmp
+dist/
+node_modules/
+package-lock.json

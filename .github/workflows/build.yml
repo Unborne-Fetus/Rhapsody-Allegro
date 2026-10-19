@@ -1,0 +1,72 @@
+name: Build and Test Rhapsody
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Godot and export templates
+        run: |
+          curl -fL https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          sudo install /tmp/godot/Godot_v4.5.1-stable_linux.x86_64 /usr/local/bin/godot
+          curl -fL https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz -o /tmp/templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/4.5.1.stable
+          unzip -j -q /tmp/templates.tpz 'templates/web*' 'templates/windows_release_x86_64*' -d ~/.local/share/godot/export_templates/4.5.1.stable
+      - name: Import and test combat
+        run: |
+          godot --headless --editor --import --quit
+          godot --headless --script res://tests/combat_test.gd
+      - name: Export Web and Windows
+        run: |
+          mkdir -p build/web build/windows
+          godot --headless --export-release Web
+          godot --headless --export-release Windows
+          python3 tools/package_web.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser smoke test
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          python3 tools/serve.py > /tmp/rhapsody-server.log 2>&1 &
+          node tests/browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Rhapsody-Allegro-Web
+          path: dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rhapsody-Allegro-Windows
+          path: build/windows/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Browser-screenshots
+          path: build/screenshots/
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && vars.ENABLE_GITHUB_PAGES == 'true'
+        with:
+          path: dist/
+  pages:
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_GITHUB_PAGES == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy browser game
+        id: deployment
+        uses: actions/deploy-pages@v4

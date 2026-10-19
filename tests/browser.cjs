@@ -1,0 +1,39 @@
+// Runs in CI against the same exported Godot build served to players.
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+(async () => {
+ const browser = await chromium.launch({args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const page = await browser.newPage({viewport:{width:1280,height:720}});
+ const errors=[];
+ const messages=[];
+ page.on('console',m=>messages.push(m.text()));
+ page.on('pageerror', e=>errors.push(e.message));
+ page.on('console',m=>{if(m.type()==='error' && /SCRIPT ERROR|Parse Error|Failed loading|RuntimeError/.test(m.text()))errors.push(m.text());});
+ await page.goto('http://127.0.0.1:8060');
+ await page.waitForFunction(()=>!document.querySelector('#status') || document.querySelector('#status').style.visibility==='hidden' || document.querySelector('#status').style.display==='none',null,{timeout:120000});
+ await page.waitForFunction(()=>typeof Engine !== 'undefined');
+ await page.waitForTimeout(3000);
+ if (!messages.some(m=>m.includes('RHAPSODY_BOOT_READY'))) throw new Error('Godot did not reach the main scene');
+ fs.mkdirSync('build/screenshots',{recursive:true});
+ await page.screenshot({path:'build/screenshots/01-title.png'});
+ await page.keyboard.press('Enter');
+ await page.waitForTimeout(1000);
+ await page.keyboard.down('KeyJ');
+ await page.keyboard.down('KeyD');
+ await page.waitForTimeout(650);
+ await page.keyboard.up('KeyD');
+ await page.keyboard.press('Space');
+ await page.waitForTimeout(1600);
+ await page.keyboard.up('KeyJ');
+ await page.screenshot({path:'build/screenshots/02-combat.png'});
+ await page.keyboard.press('Escape');
+ await page.waitForTimeout(200);
+ await page.screenshot({path:'build/screenshots/03-pause.png'});
+
+ await page.keyboard.press('Escape');
+ await page.waitForTimeout(1200);
+ if(!messages.some(m=>m.includes('RHAPSODY_FIGHT_READY'))) throw new Error('Keyboard did not start combat');
+ if(errors.length) throw new Error(errors.join('\n'));
+ await browser.close();
+ console.log('Browser boot, keyboard combat, pause/resume: PASS');
+})().catch(e=>{console.error(e);process.exit(1)});
