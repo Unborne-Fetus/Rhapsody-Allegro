@@ -34,7 +34,7 @@ func run_tests() -> void:
 	check(restored.restore({"boss":1,"difficulty":{},"score":[],"time":"bad","hits":{},"upgrades":["invented","edge","edge"]}),"Malformed optional checkpoint fields sanitized")
 	check(restored.upgrades == ["edge"] and restored.score == 0,"Unknown and duplicate upgrade IDs removed")
 	game.run.reset(); game.training = false; game.practice = false; game.start_fight(0)
-	for index in 3:
+	for index in game.Arsenal.SETS.size():
 		game.weapon_index = index; game.shoot_cd = 0; game.energy = 100; game.shots.clear(); game.shoot()
 		check(game.shots.size() == int(game.RunState.WEAPONS[index].count),"Weapon projectile count")
 		check(game.energy == 100-float(game.RunState.WEAPONS[index].cost),"Weapon energy cost")

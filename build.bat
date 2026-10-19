@@ -19,6 +19,8 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 "%GODOT%" --headless --script res://tests/input_test.gd
 if errorlevel 1 exit /b 1
+"%GODOT%" --headless --script res://tests/weapon_test.gd
+if errorlevel 1 exit /b 1
 "%GODOT%" --headless --export-release Web
 if errorlevel 1 exit /b 1
 "%GODOT%" --headless --export-release Windows

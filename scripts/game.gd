@@ -2,6 +2,7 @@ extends Node2D
 ## One simulation for native and browser. Presentation uses resolution-independent vector art.
 const Profile = preload("res://scripts/profile.gd")
 const Sound = preload("res://scripts/sound.gd")
+const Arsenal = preload("res://scripts/weapons.gd")
 const RunState = preload("res://scripts/run_state.gd")
 const HazardView = preload("res://scripts/hazard_view.gd")
 const Hazard = preload("res://scripts/hazard.gd")
@@ -21,7 +22,16 @@ var fight_base_hits := 0
 var fight_assisted := false
 var training := false
 var training_attacks := false
-var weapon_index := 0
+var mouse_attack_latched := false
+var weapon_index := Arsenal.DEFAULT
+var melee_windup := 0.0
+var melee_snapshot: Dictionary = {}
+var active_melee: Dictionary = {}
+var training_damage := 0.0
+var training_hit_count := 0
+var training_last_hit := 0.0
+var training_window: Array = []
+var range_guides := true
 var hazards: Array = []
 var hazard_view: Node2D
 var stagger := 0.0
@@ -102,6 +112,7 @@ var used_touch := false
 var gamepad := false
 var gamepad_previous: Dictionary = {}
 var settings_from := "title"
+var menu_history: Array[String] = []
 var rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -109,6 +120,8 @@ func _ready() -> void:
 	bosses = JSON.parse_string(FileAccess.get_file_as_string("res://data/bosses.json"))
 	profile.load_profile()
 	run.difficulty = int(profile.data.difficulty)
+	weapon_index = int(profile.data.weapon)
+	run.loadout_index = weapon_index
 	sound = Sound.new()
 	add_child(sound)
 	var clip = Control.new()
@@ -147,7 +160,7 @@ func _input(event: InputEvent) -> void:
 			KEY_ESCAPE, KEY_P:
 				if screen == "playing": screen = "paused"; clear_touch()
 				elif screen == "paused": screen = "playing"
-				elif screen in ["settings","help"]: screen = settings_from
+				elif screen in ["settings","help","arsenal"]: close_panel()
 				elif screen in ["loadout","select","intermission"]: screen = "title"
 			KEY_ENTER:
 				if screen == "title": screen = "loadout"
@@ -166,8 +179,12 @@ func _input(event: InputEvent) -> void:
 			KEY_Q:
 				if screen == "playing": cycle_weapon()
 			KEY_H:
-				if screen == "help": screen = settings_from
-				else: settings_from = screen; screen = "help"
+				if screen == "help": close_panel()
+				else: open_panel("help")
+			KEY_G:
+				if screen == "playing" and training: range_guides = not range_guides
+			KEY_R:
+				if screen == "playing" and training: reset_training_readout()
 			KEY_T:
 				if screen == "playing" and training: training_attacks = not training_attacks
 			KEY_V:
@@ -175,6 +192,7 @@ func _input(event: InputEvent) -> void:
 			KEY_F:
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN)
 	if event is InputEventMouseMotion and event.relative.length()>1: gamepad = false; used_touch = false
+	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT: mouse_attack_latched = false
 	if event is InputEventMouseButton and event.pressed:
 		gamepad = false; used_touch = false
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -217,37 +235,44 @@ func command(action: String) -> void:
 	menu_focus = -1
 	match action:
 		"start": screen = "loadout"
-		"resume": screen = "playing"
+		"resume": screen = "playing"; mouse_attack_latched = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 		"retry": restart_fight()
 		"next": advance()
-		"menu": screen = "title"; clear_touch()
+		"menu": screen = "title"; menu_history.clear(); clear_touch()
 		"select": screen = "select"
 		"begin": start_run()
 		"continue_run": continue_run()
 		"training_attacks": training_attacks = not training_attacks
 		"training_view": change_perspective(not side)
 		"training":
-			run.reset(); training = true; training_attacks = false; practice = true; start_fight(0); resonance = 100
-		"help": settings_from = screen; screen = "help"
+			run.reset(); equip_set(int(profile.data.weapon)); training = true; training_attacks = false; practice = true; start_fight(0); resonance = 100
+		"arsenal": open_panel("arsenal")
+		"help": open_panel("help")
 		"difficulty": profile.data.difficulty = (int(profile.data.difficulty)+1)%3; profile.save_profile()
 		"flashes": profile.data.flashes = not profile.data.flashes; profile.save_profile()
-		"settings": settings_from = screen; screen = "settings"
-		"back": screen = settings_from
+		"settings": open_panel("settings")
+		"back": close_panel()
 		"assist": profile.data.assist = not profile.data.assist; profile.save_profile()
 		"shake": profile.data.shake = not profile.data.shake; profile.save_profile()
 		"volume": profile.data.volume = fmod(float(profile.data.volume)+0.2,1.2); apply_volume(); profile.save_profile()
 		"pulse": metronome = not metronome
 		"close_help": screen = "playing"
 		_:
+			if action.begins_with("set_"): equip_set(int(action.trim_prefix("set_")),true); return
 			if action.begins_with("level_"): profile.data.difficulty = clampi(int(action.trim_prefix("level_")),0,2); profile.save_profile(); return
 			if action.begins_with("upgrade_"): choose_upgrade(action.trim_prefix("upgrade_")); return
 			if action.begins_with("boss_"):
-				practice = true; training = false; run.reset(int(profile.data.difficulty))
+				practice = true; training = false; run.reset(int(profile.data.difficulty)); equip_set(int(profile.data.weapon))
 				start_fight(int(action.trim_prefix("boss_")))
 
 func start_fight(index: int) -> void:
+	menu_history.clear()
+	mouse_attack_latched = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	fight_base_score = run.score; fight_base_time = run.time; fight_base_hits = run.hits
 	fight_assisted = bool(profile.data.assist) or run.assisted
+	weapon_index = run.loadout_index
+	melee_snapshot.clear(); active_melee.clear(); melee_windup = 0
+	reset_training_readout()
 	boss_index = clampi(index,0,bosses.size()-1)
 	max_hp = float(bosses[boss_index].hp)
 	boss_hp = max_hp
@@ -333,6 +358,8 @@ func touch_action(index: int,p: Vector2) -> void:
 				"weapon": cycle_weapon()
 				"attacks": training_attacks = not training_attacks
 				"view": change_perspective(not side)
+				"ranges": range_guides = not range_guides
+				"reset_stats": reset_training_readout()
 			return
 
 func jump() -> void:
@@ -344,6 +371,7 @@ func jump() -> void:
 
 func dodge() -> void:
 	if dash_cd>0 or energy<run.stat("dodge_cost"): return
+	melee_snapshot.clear(); melee_windup = 0
 	energy -= run.stat("dodge_cost")
 	dash_cd = run.stat("dodge_cd")
 	dash_rewarded = false
@@ -357,38 +385,42 @@ func dodge() -> void:
 	sound.tone(150,0.09)
 
 func melee() -> void:
-	if melee_cd>0: return
-	combo = (combo % 3)+1 if combo_time>0 else 1
-	combo_time = 0.9
-	melee_cd = 0.22 if combo<3 else 0.4
-	melee_flash = 0.17
+	if melee_cd>0 or not melee_snapshot.is_empty() or screen != "playing": return
+	var weapon: Dictionary = Arsenal.SETS[weapon_index]
+	combo = (combo%3)+1 if combo_time>0 else 1
+	var step = combo-1
+	melee_cd = float(weapon.melee_cooldown[step])
+	combo_time = melee_cd+0.65
 	var target_dir = player.direction_to(boss)
 	if used_touch or gamepad or held(KEY_K): facing = target_dir
 	else: facing = player.direction_to(mouse_world())
 	var dash_strike = dash_time>0
-	if player.distance_to(boss)<(165 if dash_strike else (145 if combo == 3 else 118)) and facing.dot(target_dir)>0.1:
-		damage_boss((42.0 if dash_strike else (30.0 if combo<3 else 55.0))*run.stat("melee"))
-		gain_resonance(8)
-		add_stagger(17 if combo == 3 else 10)
-		add_style("dash strike" if dash_strike else "blade",9)
-		if run.has("siphon"): hp = minf(run.stat("health"),hp+2)
-		energy = minf(run.stat("energy"),energy+13)
-		hit_stop = 0.045 if combo == 3 else 0.025
-		emit_sparks(boss,TEAL,14)
-		sound.tone(260+combo*90,0.1)
-	else: sound.tone(170+combo*35,0.05,0.06)
+	melee_snapshot = weapon.duplicate(true)
+	melee_snapshot["power"] = (float(weapon.dash_damage) if dash_strike else float(weapon.melee_damage[step]))*run.stat("melee")
+	melee_snapshot["reach"] = float(weapon.dash_range) if dash_strike else float(weapon.melee_range[step])
+	melee_snapshot["facing"] = facing
+	melee_snapshot["step"] = combo
+	melee_snapshot["dash"] = dash_strike
+	melee_windup = float(weapon.windup[step])
+	active_melee = melee_snapshot.duplicate(true)
+	melee_flash = 0
+	sound.tone(130+weapon_index*70,0.05,0.05)
 
 func shoot() -> void:
-	var weapon: Dictionary = RunState.WEAPONS[weapon_index]
-	if shoot_cd>0 or energy<float(weapon.cost) or shots.size()>=340: return
+	var weapon: Dictionary = Arsenal.SETS[weapon_index]
+	if shoot_cd>0 or energy<float(weapon.cost) or shots.size()>=340 or screen != "playing": return
 	energy -= float(weapon.cost)
 	shoot_cd = float(weapon.cooldown)
 	var aim = player.direction_to(boss) if used_touch or gamepad or held(KEY_J) else player.direction_to(mouse_world())
 	facing = aim
 	for i in int(weapon.count):
 		var direction = aim.rotated((i-(int(weapon.count)-1)*0.5)*float(weapon.spread))
-		shots.append(Shot.new(player+direction*24,direction*float(weapon.speed),true,float(weapon.damage)*run.stat("ranged"),7 if weapon_index == 2 else 4))
-	sound.tone(400+weapon_index*160,0.06,0.055)
+		var shot = Shot.new(player+direction*24,direction*float(weapon.speed),true,float(weapon.damage)*run.stat("ranged"),float(weapon.radius))
+		shot.max_distance = maxf(0,float(weapon.range)-24)
+		shot.source_set = weapon_index
+		shot.tint = Color(weapon.color)
+		shots.append(shot)
+	sound.tone(200+weapon_index*180,0.12 if weapon_index == 0 else 0.045,0.09 if weapon_index == 0 else 0.05)
 
 func parry() -> void:
 	if parry_cd>0: return
@@ -414,8 +446,13 @@ func burst() -> void:
 func damage_boss(amount: float) -> void:
 	if screen != "playing": return
 	if training:
+		var dealt = amount*(1.3 if stagger_time>0 else 1.0)
 		boss_flash = 0.08
-		fight_score += int(amount)
+		fight_score += int(dealt)
+		training_damage += dealt; training_hit_count += 1; training_last_hit = dealt
+		training_window.append({"time":elapsed,"damage":dealt})
+		if training_window.size()>200: training_window.pop_front()
+		floats.append({"p":boss+Vector2(rng.randf_range(-20,20),-55),"text":str(int(dealt)),"life":0.55})
 		return
 	var dealt = amount*(1.3 if stagger_time>0 else 1.0)
 	boss_hp = maxf(0,boss_hp-dealt)
@@ -444,7 +481,7 @@ func hurt(amount: float) -> void:
 	emit_sparks(player,CORAL,18)
 	sound.tone(75,0.18,0.25)
 	if training: hp = run.stat("health")
-	elif hp <= 0: screen = "dead"
+	elif hp <= 0: screen = "dead"; melee_snapshot.clear(); melee_windup = 0
 
 func emit_sparks(p: Vector2,color: Color,count: int) -> void:
 	for i in count:
@@ -473,6 +510,11 @@ func simulate(delta: float) -> void:
 	elapsed += delta
 	for prop in ["invincible","dash_time","dash_cd","melee_cd","melee_flash","shoot_cd","parry_time","parry_cd","boss_flash","banner_time","combo_time"]:
 		set(prop,maxf(0,float(get(prop))-delta))
+	if not melee_snapshot.is_empty():
+		melee_windup = maxf(0,melee_windup-delta)
+		if melee_windup<=0: resolve_melee()
+	if screen != "playing": return
+	training_window = training_window.filter(func(hit): return elapsed-float(hit.time)<=5.0)
 	energy = minf(run.stat("energy"),energy+delta*16)
 	style = maxf(0,style-delta*4)
 	stagger_lock = maxf(0,stagger_lock-delta)
@@ -512,7 +554,7 @@ func simulate(delta: float) -> void:
 	var pads = Input.get_connected_joypads()
 	if not pads.is_empty(): shooting = shooting or Input.get_joy_axis(pads[0],JOY_AXIS_TRIGGER_RIGHT)>0.25 or Input.is_joy_button_pressed(pads[0],JOY_BUTTON_RIGHT_SHOULDER)
 	if shooting: shoot()
-	if "melee" in touch_actions.values() or held(KEY_K): melee()
+	if "melee" in touch_actions.values() or held(KEY_K) or (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not mouse_attack_latched): melee()
 	beat_timer += delta
 	if beat_timer>=0.5:
 		beat_timer -= 0.5; beat += 1
@@ -528,12 +570,13 @@ func simulate(delta: float) -> void:
 	for shot in shots:
 		shot.step(delta)
 		if shot.friendly:
-			if shot.intersects(boss,43): damage_boss(shot.damage); shot.life = 0; emit_sparks(shot.position,TEAL,3); gain_resonance(1.2); add_style("fire",1.0); add_stagger(4 if shot.damage>30 else 0.6)
+			if shot.intersects(boss,43): damage_boss(shot.damage); shot.life = 0; emit_sparks(shot.position,TEAL,3); gain_resonance(shot.damage*0.08); add_style("fire",shot.damage*0.08); add_stagger(shot.damage*0.06)
 		else:
 			if shot.intersects(player,14):
 				if parry_time>0:
 					shot.friendly = true
 					shot.velocity = shot.position.direction_to(boss)*900
+					shot.tint = GOLD
 					shot.damage = 28
 					gain_resonance(18)
 					parries += 1; add_stagger(18); add_style("parry",20)
@@ -543,11 +586,14 @@ func simulate(delta: float) -> void:
 				elif dash_time>0:
 					perfect_dodge()
 				else: hurt(12); shot.life = 0
+	for shot in shots:
+		if shot.friendly and shot.life<=0 and shot.distance_traveled>=shot.max_distance: emit_sparks(shot.position,shot.tint,3)
 	shots = shots.filter(func(s): return s.life>0 and Rect2(50,110,1180,560).has_point(s.position))
 
 func change_perspective(to_side: bool) -> void:
 	side = to_side
 	shots.clear(); hazards.clear()
+	melee_snapshot.clear(); melee_windup = 0; melee_flash = 0
 	ground_grace = 0; jump_buffer = 0
 	windup = 0; charge_time = 0; attack_timer = 2.5
 	player = Vector2(clampf(player.x,170,600),560 if side else 440)
@@ -665,7 +711,7 @@ func _draw() -> void:
 	for i in 36:
 		var x = float(i)*39+fmod(total_time*7,39)
 		line(Vector2(x,0),Vector2(x-200,720),Color(0.25,0.38,0.43,0.045))
-	if screen in ["title","select","settings","loadout","intermission","help"]:
+	if screen in ["title","select","settings","loadout","intermission","help","arsenal"]:
 		draw_menu()
 		return
 	draw_arena()
@@ -674,14 +720,14 @@ func _draw() -> void:
 
 func draw_menu() -> void:
 	text_at("R / A",Vector2(58,62),22,TEAL)
-	text_at("SECOND MOVEMENT BUILD  /  0.2",Vector2(896,59),14,MUTED)
+	text_at("WEAPON SETS BUILD  /  0.3",Vector2(896,59),14,MUTED)
 	line(Vector2(58,82),Vector2(1222,82),Color("293340"))
 	if screen == "title":
 		text_at("A HYBRID-PERSPECTIVE BOSS RUSH",Vector2(94,157),16,TEAL)
 		text_at("RHAPSODY",Vector2(88,250),84)
 		text_at("ALLEGRO",Vector2(94,307),42,CORAL)
 		text_at("Change the form. Keep the fight.",Vector2(96,355),25)
-		text_at("Three weapons. Three movements. Your performance.",Vector2(96,389),17,MUTED)
+		text_at("Four weapon sets. Find your fighting style.",Vector2(96,389),17,MUTED)
 		button("NEW PERFORMANCE",Rect2(96,422,390,49),"start",true)
 		if not profile.data.checkpoint.is_empty():
 			button("CONTINUE PERFORMANCE",Rect2(96,482,390,44),"continue_run")
@@ -690,7 +736,7 @@ func draw_menu() -> void:
 		button("BOSS SELECT",Rect2(96,537,188,44),"select")
 		button("HOW TO PLAY",Rect2(298,537,188,44),"help")
 		button("SETTINGS",Rect2(96,592,188,44),"settings")
-		if not profile.data.checkpoint.is_empty(): button("TRAINING",Rect2(298,592,188,44),"training")
+		button("ARSENAL",Rect2(298,592,188,44),"arsenal")
 		text_at("WASD MOVE  ·  K BLADE  ·  J FIRE  ·  SPACE DODGE",Vector2(96,681),14,MUTED)
 		draw_boss_figure(Vector2(920,330),0,2.4,Color("ef7854"))
 		draw_arc(Vector2(920,330),185,-PI*0.85,PI*0.7,80,Color("33414e"),1.5,true)
@@ -708,10 +754,33 @@ func draw_menu() -> void:
 			text_at(["STANDARD","CHALLENGING","EXPERT"][i],Vector2(x+22,328),14,MUTED)
 			text_at(["The intended first playthrough.","Faster, denser, harder hitting.","Every opening must be earned."][i],Vector2(x+22,364),16)
 			button("SELECTED" if selected else "SELECT",Rect2(x+22,389,299,44),"level_"+str(i),selected)
-		centered("NEEDLE  /  precise volleys       CHORUS  /  close-range spread       RAIL  /  heavy precision",508,18,TEAL)
-		centered("Q switches weapons instantly. Each keeps its recovery time.",545,17,MUTED)
+		for i in Arsenal.SETS.size():
+			var x = 96+i*278
+			var selected = int(profile.data.weapon) == i
+			button(Arsenal.SETS[i].name,Rect2(x,479,262,43),"set_"+str(i),selected)
+		centered(Arsenal.SETS[int(profile.data.weapon)].description+"  ·  Q switches the complete set in combat.",555,17,TEAL)
 		button("BEGIN PERFORMANCE",Rect2(440,585,400,52),"begin",true)
 		button("BACK",Rect2(96,620,180,44),"menu")
+	elif screen == "arsenal":
+		centered("CHOOSE YOUR REACH",151,36)
+		centered("Every set changes melee timing, reach, damage and ranged fire. All four are available immediately.",190,17,MUTED)
+		for i in Arsenal.SETS.size():
+			var weapon: Dictionary = Arsenal.SETS[i]
+			var x = 64+i*292
+			var c = Color(weapon.color)
+			var selected = weapon_index == i
+			draw_style_box(panel_style(Color("15222c"),c if selected else Color("33414e")),Rect2(x,221,276,374))
+			draw_weapon_badge(Vector2(x+138,275),weapon)
+			text_at(weapon.name,Vector2(x+18,339),26,c)
+			text_at(weapon.role,Vector2(x+18,368),12,MUTED)
+			text_at(["Hammer / concussion cannon","Twin knives / repeater","Saber / pulse carbine","Light spear / marksman rifle"][i],Vector2(x+18,401),14)
+			text_at("MELEE   %d / %d / %d" % [weapon.melee_damage[0],weapon.melee_damage[1],weapon.melee_damage[2]],Vector2(x+18,434),15)
+			text_at("SHOT   %d DMG / %.2fs" % [weapon.damage,weapon.cooldown],Vector2(x+18,464),15)
+			text_at("SHOT REACH   %d" % int(weapon.range),Vector2(x+18,494),14,c)
+			text_at("STRIKE REACH   %d–%d" % [weapon.melee_range[0],weapon.melee_range[2]],Vector2(x+18,520),13,MUTED)
+			button("EQUIPPED" if selected else "EQUIP",Rect2(x+18,541,240,40),"set_"+str(i),selected)
+		centered("Q / controller B / touch WEAPON cycles sets. Swapping keeps attack recovery and captured windups.",628,16,MUTED)
+		button("BACK",Rect2(490,654,300,44),"back",true)
 	elif screen == "select":
 		text_at("CHOOSE YOUR MOVEMENT",Vector2(96,170),35)
 		text_at("Practice an unlocked boss. Training is always available. Difficulty: "+RunState.DIFFICULTIES[int(profile.data.difficulty)].name,Vector2(96,210),17,MUTED)
@@ -760,8 +829,8 @@ func draw_menu() -> void:
 		centered("THE COMBAT LANGUAGE",157,36)
 		var entries = [
 			["MOVE / DODGE","WASD or arrows · Space to dodge through danger. A close dodge builds resonance."],
-			["BLADE / DASH STRIKE","K or left mouse · Three-hit combo. Strike during a dodge for extra reach and damage."],
-			["THREE WEAPONS","Hold J or right mouse · Q switches Needle, Chorus and Rail. Melee restores energy."],
+			["STRIKE / DASH STRIKE","Hold K or click left mouse. Heavy attacks wind up; dodge cancels them without refunding recovery."],
+			["FOUR WEAPON SETS","Q switches Breaker, Flurry, Cadence and Horizon. Both your strike and your shot change."],
 			["PARRY / RESONANCE","L reflects bullets. E spends a full resonance meter to clear danger and hit the boss."],
 			["STAGGER / STYLE","Mix blade hits, ranged fire and parries. Fill stagger to open a +30% damage window."],
 			["FORM SHIFTS","Boss health thresholds change perspective. W jumps in side view; S drops through platforms."],
@@ -825,8 +894,10 @@ func draw_arena() -> void:
 		else: draw_circle(boss,65+(1-windup)*40,Color(CORAL,alpha),false,2,true)
 		text_at("!",boss+Vector2(-5,-82),26,CORAL)
 	for shot in shots:
-		var c = TEAL if shot.friendly else color
-		line(shot.position-shot.velocity.normalized()*12,shot.position,Color(c,0.4),shot.radius*1.5)
+		var c = shot.tint if shot.friendly else color
+		if shot.friendly and shot.source_set == 0: draw_circle(shot.position,shot.radius+5,Color(c,0.13))
+		var trail = [14.0,18.0,28.0,58.0][shot.source_set] if shot.friendly and shot.source_set>=0 else 12.0
+		line(shot.position-shot.velocity.normalized()*trail,shot.position,Color(c,0.4),shot.radius*1.5)
 		draw_circle(shot.position,shot.radius,c)
 		if not shot.friendly: draw_circle(shot.position,shot.radius*0.4,INK)
 	if boss_hp>0:
@@ -851,11 +922,7 @@ func draw_player() -> void:
 	draw_colored_polygon(PackedVector2Array([player+Vector2(-10,-12),player+Vector2(10,-12),player+Vector2(8,8),player+Vector2(-8,8)]),color)
 	draw_circle(player+Vector2(0,-17),8,Color("dfdfd1"))
 	line(player+Vector2(-6,-18),player+Vector2(6,-18),INK,3)
-	line(player+Vector2(2,-1),player+facing*27,PAPER,3)
-	line(player+facing*25,player+facing*43,TEAL,3)
-	if melee_flash>0:
-		var angle = facing.angle()
-		draw_arc(player,90 if combo<3 else 118,angle-1.05,angle+1.05,22,Color(TEAL,melee_flash/0.17),6,true)
+	draw_equipped_weapon()
 	if parry_time>0: draw_circle(player,34,GOLD,false,4,true)
 	if dash_time>0: line(player-dash_dir*55,player,Color(TEAL,0.6),5)
 
@@ -872,7 +939,7 @@ func draw_hud() -> void:
 	text_at("II",Vector2(1180,100),26,MUTED)
 	text_at("VITALITY  %d" % int(hp),Vector2(100,638),14,PAPER)
 	bar(Rect2(100,650,240,7),hp/run.stat("health"),CORAL)
-	text_at(RunState.WEAPONS[weapon_index].name+"  /  Q",Vector2(370,638),14,TEAL)
+	text_at(Arsenal.SETS[weapon_index].name+" · %d / Q" % int(Arsenal.SETS[weapon_index].range),Vector2(370,638),14,Color(Arsenal.SETS[weapon_index].color))
 	bar(Rect2(370,650,190,7),energy/run.stat("energy"),TEAL)
 	text_at("RESONANCE"+ ("  /  E TO BREAK" if resonance>=100 else ""),Vector2(590,638),14,GOLD)
 	bar(Rect2(590,650,290,7),resonance/100,GOLD)
@@ -892,6 +959,10 @@ func draw_hud() -> void:
 		centered(banner,330,22,TEAL)
 	elif elapsed<14 and screen == "playing" and not used_touch and not training:
 		centered("Melee restores energy. Gold parry reflects shots. Mix actions to build stagger and style.",678,12,GOLD)
+	if training:
+		draw_rect(Rect2(114,198,326,61),Color(INK,0.9))
+		text_at("TOTAL %d  ·  HITS %d  ·  LAST %.0f" % [int(training_damage),training_hit_count,training_last_hit],Vector2(125,221),13,TEAL)
+		text_at("5s DPS %.1f  ·  G RANGE  ·  R RESET" % training_dps(),Vector2(125,244),13,MUTED)
 	if used_touch and screen == "playing": draw_touch()
 
 func draw_touch() -> void:
@@ -913,7 +984,8 @@ func draw_overlay() -> void:
 		button("RESUME",Rect2(450,320,380,52),"resume",true)
 		button("SETTINGS",Rect2(450,390,380,48),"settings")
 		button("RESTART MOVEMENT",Rect2(450,454,380,48),"retry")
-		button("COMBAT GUIDE",Rect2(450,518,380,48),"help")
+		button("ARSENAL / SET DETAILS",Rect2(450,518,380,48),"arsenal")
+		button("COMBAT GUIDE",Rect2(90,518,285,48),"help")
 		button("TITLE SCREEN",Rect2(450,582,380,48),"menu")
 		if training:
 			button("ATTACKS "+("ON" if training_attacks else "OFF"),Rect2(90,390,285,48),"training_attacks")
@@ -941,7 +1013,7 @@ func clear_touch() -> void:
 func start_run() -> void:
 	practice = false; training = false
 	run.reset(int(profile.data.difficulty))
-	weapon_index = 0
+	equip_set(int(profile.data.weapon))
 	profile.data.checkpoint = run.snapshot(0,bool(profile.data.assist)); profile.save_profile()
 	start_fight(0)
 
@@ -961,9 +1033,8 @@ func choose_upgrade(id: String) -> void:
 	start_fight(boss_index+1)
 
 func cycle_weapon() -> void:
-	weapon_index = (weapon_index+1)%RunState.WEAPONS.size()
-	# Switching never cancels the previous weapon's recovery.
-	sound.tone(500+weapon_index*100,0.06)
+	equip_set((weapon_index+1)%Arsenal.SETS.size())
+	sound.tone(300+weapon_index*120,0.06)
 
 func gain_resonance(amount: float) -> void:
 	resonance = minf(100,resonance+amount*run.stat("resonance"))
@@ -1010,6 +1081,8 @@ func touch_layout() -> Array:
 	if training:
 		layout.append([Vector2(600,215),"attacks","ATK"])
 		layout.append([Vector2(700,215),"view","VIEW"])
+		layout.append([Vector2(800,215),"ranges","RANGE"])
+		layout.append([Vector2(900,215),"reset_stats","RESET"])
 	return layout
 
 func draw_architecture(color: Color) -> void:
@@ -1116,3 +1189,78 @@ func navigate_menu(direction: int) -> void:
 	if buttons.is_empty(): return
 	if menu_focus<0: menu_focus = 0 if direction>0 else buttons.size()-1
 	else: menu_focus = posmod(menu_focus+direction,buttons.size())
+
+func equip_set(index: int,persist: bool = false) -> void:
+	weapon_index = Arsenal.valid_index(index)
+	run.loadout_index = weapon_index
+	combo = 0; combo_time = 0
+	# Pending attacks retain their captured stats, aim and recovery when swapping.
+	if persist:
+		profile.data.weapon = weapon_index
+		profile.save_profile()
+
+func resolve_melee() -> void:
+	if melee_snapshot.is_empty() or screen != "playing": return
+	var attack = melee_snapshot.duplicate(true)
+	melee_snapshot.clear(); melee_windup = 0
+	active_melee = attack
+	melee_flash = float(attack.flash)
+	var distance = player.distance_to(boss)
+	var facing_target = attack.facing.dot(player.direction_to(boss))
+	if distance<=float(attack.reach) and (distance<1 or facing_target>=cos(float(attack.arc))):
+		damage_boss(float(attack.power))
+		var finisher = 1.4 if int(attack.step) == 3 else 1.0
+		gain_resonance(float(attack.resonance)*finisher)
+		add_stagger(float(attack.stagger)*finisher)
+		add_style("dash strike" if attack.dash else "blade",float(attack.resonance))
+		if run.has("siphon"): hp = minf(run.stat("health"),hp+float(attack.power)*0.05)
+		energy = minf(run.stat("energy"),energy+float(attack.energy_return))
+		hit_stop = 0.0 if attack.shape == "knives" else minf(0.065,float(attack.flash)*0.22)
+		emit_sparks(boss,Color(attack.color),18 if attack.shape == "hammer" else 8)
+		sound.tone(170+int(attack.step)*60+weapon_index*65,0.12 if attack.shape == "hammer" else 0.05)
+	else: sound.tone(160,0.04,0.04)
+
+func reset_training_readout() -> void:
+	training_damage = 0; training_hit_count = 0; training_last_hit = 0; training_window.clear()
+
+func training_dps() -> float:
+	var damage := 0.0
+	for hit in training_window: damage += float(hit.damage)
+	return damage/5.0
+
+func draw_weapon_badge(p: Vector2,weapon: Dictionary) -> void:
+	var c = Color(weapon.color)
+	draw_circle(p,38,Color(c,0.07)); draw_circle(p,38,Color(c,0.25),false,1,true)
+	match weapon.shape:
+		"hammer": line(p+Vector2(-14,24),p+Vector2(12,-17),PAPER,4); poly_at(p,[Vector2(-2,-25),Vector2(28,-8),Vector2(16,10),Vector2(-14,-6)],1,c)
+		"knives":
+			for sign_x in [-1,1]: poly_at(p,[Vector2(sign_x*11,25),Vector2(sign_x*8,-27),Vector2(sign_x*24,-5)],1,c)
+		"saber": poly_at(p,[Vector2(-15,24),Vector2(10,-22),Vector2(27,-28),Vector2(-5,22)],1,c); line(p+Vector2(-22,11),p+Vector2(0,26),PAPER,3)
+		"spear": line(p+Vector2(-22,24),p+Vector2(17,-18),c,3); poly_at(p,[Vector2(11,-24),Vector2(29,-30),Vector2(22,-12)],1,PAPER)
+
+func draw_equipped_weapon() -> void:
+	var weapon: Dictionary = active_melee if (melee_windup>0 or melee_flash>0) and not active_melee.is_empty() else Arsenal.SETS[weapon_index]
+	var aim: Vector2 = weapon.get("facing",facing)
+	var normal = aim.orthogonal()
+	var c = Color(weapon.color)
+	var hand = player+aim*18
+	line(player+Vector2(2,-1),hand,PAPER,3)
+	match weapon.shape:
+		"hammer":
+			line(hand,player+aim*42,PAPER,4)
+			draw_colored_polygon(PackedVector2Array([player+aim*34-normal*10,player+aim*49-normal*10,player+aim*49+normal*10,player+aim*34+normal*10]),c)
+		"knives":
+			for sign_x in [-1,1]: line(player+normal*sign_x*9+aim*12,player+normal*sign_x*9+aim*36,c,3)
+		"saber": line(hand,player+aim*53,c,4); line(hand-normal*7,hand+normal*7,PAPER,2)
+		"spear": line(player-aim*9,player+aim*62,c,3); draw_colored_polygon(PackedVector2Array([player+aim*75,player+aim*59-normal*5,player+aim*59+normal*5]),PAPER)
+
+func open_panel(panel: String) -> void:
+	if screen == panel: return
+	menu_history.append(screen)
+	settings_from = screen; screen = panel
+	menu_focus = -1
+
+func close_panel() -> void:
+	screen = menu_history.pop_back() if not menu_history.is_empty() else settings_from
+	settings_from = menu_history.back() if not menu_history.is_empty() else "title"
+	menu_focus = -1

@@ -32,5 +32,14 @@ func run_capture() -> void:
 	game.screen = "intermission"; game.upgrade_options = game.run.choices(0); await capture("intermission")
 	game.screen = "settings"; await capture("settings")
 	game.screen = "help"; await capture("guide")
+	game.screen = "arsenal"; await capture("arsenal")
+	for i in game.Arsenal.SETS.size():
+		game.command("training"); game.equip_set(i); game.banner_time = 0
+		game.player = Vector2(500,440); game.boss = Vector2(500+float(game.Arsenal.SETS[i].melee_range[0])-3,440)
+		game.gamepad = true; game.melee()
+		for frame in 80:
+			if game.melee_snapshot.is_empty(): break
+			game.simulate(0.005)
+		await capture("set-"+str(i))
 	print("PRESENTATION_CAPTURE_COMPLETE")
 	quit()

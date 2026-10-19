@@ -1,10 +1,10 @@
-# Foundation, version 0.2
+# Foundation, version 0.3
 
 Rhapsody: Allegro is a zero-budget Godot action boss rush with hybrid melee/ranged combat and top-down/side-scrolling changes. This foundation expands gameplay while leaving story, setting, final art and soundtrack decisions open. Music integration is deferred; no commercial recordings or rhythm-gated combat are added.
 
 ## Run structure
 
-Title → difficulty selection → boss → results → choose augmentation → next boss. Three bosses complete a performance. The current movement checkpoint stores difficulty, accumulated totals, assist classification, upgrades, and a stable selection seed. Checkpoints occur at the start of a movement; they do not restore the exact middle of an attack.
+Title → difficulty selection → boss → results → choose augmentation → next boss. Three bosses complete a performance. The current movement checkpoint stores difficulty, accumulated totals, assist classification, upgrades, a stable selection seed, and the equipped weapon set. Checkpoints occur at the start of a movement; they do not restore the exact middle of an attack.
 
 A failed fight can be retried freely. Replaying after a clear first restores the run totals from that fight's beginning, so repeat clears cannot inflate a run score. Completing the final movement clears the checkpoint. Boss practice is separate from run progression; the training arena awards no unlocks or records and cannot kill either participant.
 
@@ -14,9 +14,11 @@ Upgrade offerings are stable for a run/checkpoint and sampled from eight unowned
 
 Default player speed is 310 units/second. Dodge costs 24 energy, grants 0.23 seconds of protection, moves for 0.17 seconds and recovers for 0.48 seconds. Quickstep changes cost/recovery to 18/0.36. Successful blade hits restore 13 energy; passive regeneration is 16/second.
 
-The blade combo deals 30/30/55 before upgrades. Its third hit has greater reach and recovery. A strike during a dodge deals 42 before upgrades, with 165 units of reach. Hit stop is presentation-side and leaves deterministic simulation tests independent of frame pacing.
+Four complete sets now define both melee and ranged combat; see `WEAPONS.md` for the tuning table. Cadence is the balanced default. Range is enforced in projectile simulation by clamping each step to remaining travel, preserving swept collision only along that clamped segment.
 
-Needle: 9 damage, 3 energy, 0.14 second recovery. Chorus: three 10-damage pellets, 7 energy, 0.32 second recovery. Rail: 46 damage, 12 energy, 0.66 second recovery. Weapon switching preserves existing recovery. Ranged attacks use swept collision so fast Rail shots cannot skip through a target between frames.
+Melee attacks capture a set-specific windup, recovery, direction, combo step, reach, arc, damage and rewards at activation. Damage resolves after windup against the current target position. Set swapping preserves pending attacks and both cooldowns while resetting combo progression. Dodge cancels a pending windup without refunding recovery. The fast set has no hit stop; heavier sets have more pronounced impact. Melee can be held on keyboard, mouse or touch; menu clicks are latched until release so starting/resuming a game does not accidentally attack.
+
+Reward scaling keeps fast attack counts from multiplying healing, energy, resonance and stagger disproportionately. Lifeline restores 5% of the captured base strike damage. Ranged resonance, style and stagger rewards scale with hit damage; rapid low-damage projectiles cannot multiply meter simply through hit count.
 
 Parry lasts 0.2 seconds (0.28 with Golden Window), reflects a bullet for 28 damage, and grants energy/resonance/stagger. Perfect dodges grant resonance once per dash. Burst spends 100 resonance for 135 damage, clears hostile shots and area attacks, and protects for 0.7 seconds.
 
@@ -38,10 +40,14 @@ Profiles remain version 1 for backwards compatibility with the original prototyp
 
 Original vector figures provide a player silhouette, a clockwork sentinel, a crystalline singer, and a conductor with marionette strings. These remain prototype art. Real native OpenGL captures are part of presentation verification. Impact flashes and screen shake can be reduced independently.
 
-Regression coverage spans 156 checks across base combat, new mechanics, run transitions and dispatched keyboard/mouse/multitouch events, plus 24 minutes of combined simulation, with object bounds checked across nine boss/difficulty combinations. The web packager's content-addressed chunk loader is tested for byte identity, valid WebAssembly, MIME, host asset limits, normal resource fallthrough and failed chunk handling.
+Regression coverage spans 258 checks across base combat, new mechanics, run transitions and dispatched keyboard/mouse/multitouch events, plus 24 minutes of combined simulation, with object bounds checked across nine boss/difficulty combinations. The web packager's content-addressed chunk loader is tested for byte identity, valid WebAssembly, MIME, host asset limits, normal resource fallthrough and failed chunk handling.
 
 A real exported-browser smoke test is included for CI. The GitHub-hosted runner has failed before starting its job, so browser end-to-end verification remains a known gap. Safari, physical controller variations, multitouch ergonomics and low-power mobile performance still need human playtesting.
 
 ## Next design work
 
 First-player feedback should drive camera scale, movement feel, damage/readability, usefulness of platforms, and weapon balance. After those settle, split bespoke boss logic into separate encounter scenes, add final character animation and hand-authored arenas, and decide how music belongs in the game. Retain one Godot simulation for browser and desktop.
+
+## Weapon iteration and training
+
+The Arsenal compares four sets side by side, with melee combo damage, shot damage/cadence and both ranges. Profiles remember the chosen starting set; checkpoints capture the current set at the start of the saved movement. Older checkpoints default to Cadence. Training exposes range circles and clipped swing effects, total/hit/last-hit counters and a rolling five-second DPS average. Resetting those statistics does not restart the fight.

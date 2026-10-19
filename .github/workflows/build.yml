@@ -25,6 +25,7 @@ jobs:
           godot --headless --script res://tests/combat_test.gd
           godot --headless --script res://tests/advanced_test.gd
           godot --headless --script res://tests/input_test.gd
+          godot --headless --script res://tests/weapon_test.gd
       - name: Export Web and Windows
         run: |
           mkdir -p build/web build/windows

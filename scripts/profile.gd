@@ -1,8 +1,9 @@
 extends RefCounted
 ## Versioned local profile. Browser exports use Godot's IndexedDB-backed user://.
+const Arsenal = preload("res://scripts/weapons.gd")
 const PATH := "user://profile.json"
 var path := PATH
-var data: Dictionary = {"version":1,"unlocked":0,"best":{},"volume":0.6,"shake":true,"assist":false,"difficulty":0,"flashes":true,"checkpoint":{}}
+var data: Dictionary = {"version":1,"unlocked":0,"best":{},"volume":0.6,"shake":true,"assist":false,"difficulty":0,"weapon":2,"flashes":true,"checkpoint":{}}
 func load_profile() -> void:
 	if not FileAccess.file_exists(path): return
 	var parser = JSON.new()
@@ -20,6 +21,7 @@ func load_profile() -> void:
 		data.best = valid_best
 		data.unlocked = clampi(int(data.unlocked),0,2)
 		data.difficulty = clampi(int(parsed.get("difficulty",0)),0,2) if parsed.get("difficulty",0) is float or parsed.get("difficulty",0) is int else 0
+		data.weapon = Arsenal.valid_index(parsed.get("weapon",Arsenal.DEFAULT))
 		data.volume = clampf(float(data.volume),0,1)
 func save_profile() -> void:
 	var file = FileAccess.open(path+".tmp",FileAccess.WRITE)
