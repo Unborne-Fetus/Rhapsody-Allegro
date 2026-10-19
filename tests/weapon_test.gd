@@ -42,7 +42,9 @@ func run_tests() -> void:
 	for voice in game.sound.voices: voice.stop()
 	game.sound.enabled = false
 	game.profile.data.eco_mode = true; game.sparks.clear()
+	var gameplay_rng_state := game.rng.state
 	game.emit_sparks(Vector2(500,400),game.TEAL,300)
+	check(game.rng.state == gameplay_rng_state,"Cosmetic emission does not consume combat RNG")
 	check(game.sparks.size() == 80,"Eco mode respects its eighty-particle VFX budget")
 	game.sparks.clear(); game.profile.data.eco_mode = false
 	game.emit_sparks(Vector2(500,400),game.TEAL,300)
