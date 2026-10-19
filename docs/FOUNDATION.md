@@ -1,4 +1,4 @@
-# Foundation, version 0.6.2
+# Foundation, version 0.7.0
 
 Rhapsody: Allegro uses one Godot simulation for browser and desktop. The prototype combines action boss fights with top-down / side-scrolling transitions. Combat has no required beat timing. Final art, story and soundtrack remain open for feedback.
 
@@ -16,7 +16,7 @@ Augmentation cards show a side reference panel on mouse hover, keyboard/controll
 
 ## Run and save integrity
 
-Title → character / difficulty → boss → results → augmentation → next boss, for seven movements and six augmentation choices. Checkpoints store character, upgrades, difficulty, assist classification, seed and totals at the beginning of a movement. Retries roll back that movement's contribution. Final campaign completion clears its checkpoint. Training cannot kill participants or create records.
+Title → character / difficulty → boss → results → augmentation → next boss, for twelve movements and eleven augmentation choices. Checkpoints store character, upgrades, difficulty, assist classification, seed and totals at the beginning of a movement. Retries roll back that movement's contribution. Final campaign completion clears its checkpoint. Training cannot kill participants or create records.
 
 Profiles remain version 1 with defaults for new fields. Save writes use a temporary file and rename. Corrupt JSON recovers safely; malformed checkpoint values and duplicate or unknown upgrades are sanitized. Older weapon choices map to characters and missing choices default to Aria. Assist records remain separately classified even if assist is later turned off.
 
@@ -61,3 +61,10 @@ On touch browsers, `rhapsodyPrepareCanvas` runs before Engine creation and switc
 Landscape reserves at least 200 logical units per rail. Wider screens use their additional space for wider black rails. The arena and clipped hazards share a centered transform; HUD and menus adapt separately. Joystick and button hit areas live entirely inside the rails. Menus translate both their drawing and registered hit rectangles into the same centered coordinates. Portrait controls anchor to the bottom of the taller viewport. Opaque phone overlays prevent underlying HUD text from appearing through the result screen.
 
 Phone facing follows the current boss direction independently from movement, input source and AUTO. Pending phone melee strikes also update their direction toward the boss; desktop attack commitment remains unchanged. Phone regression tests cover facing while retreating / jumping, repeated rotations in fights and completion menus, full viewport coverage and control containment inside both rails. `tests/phone_browser.cjs` covers canvas sizing at multiple pixel ratios, embedded viewport sizes, repeated rotation and late engine initialization without claiming a real browser playtest.
+
+
+## Musical encore and mobile viewport — 0.7.0
+
+The Godot root window, rather than a separately sampled CSS rectangle, supplies the logical aspect ratio. Phone presentation uses viewport scaling so all rendering and input share the same extent. The browser constrains the CSS canvas to the smaller of the document and visual viewport, subtracts safe-area insets, then derives the backing buffer at device pixel ratio. Resize observers, delayed orientation updates and late engine-boot repair remain. All action circles, including manual STRIKE and JUMP together, are tested against physical viewport bounds through repeated portrait, landscape and ultrawide rotations. AUTO stays top-left; parrying remains disabled.
+
+Game packs use content-addressed filenames and an explicit `mainPack` engine setting to prevent a previous release's pack surviving a cached download. Five new non-parry upgrades keep all eleven intermissions selectable. Song movement speeds and sound pitches live in encounter data rather than a four-entry array. Existing saves retain original encounter indices; the new bounds extend to movement twelve.

@@ -18,7 +18,12 @@ const UPGRADES := [
 	{"id":"fire","name":"OVERTONE","line1":"Character ability damage +20%","line2":"Boosts your character-specific skill.","icon":"fire"},
 	{"id":"heart","name":"SECOND WIND","line1":"Maximum vitality +25","line2":"Restore health before the next fight.","icon":"heart"},
 	{"id":"siphon","name":"LIFELINE","line1":"Blade hits heal 5% of base damage","line2":"Sustain yourself at close range.","icon":"heart"},
-	{"id":"echo","name":"RESONANT CORE","line1":"Resonance gain +35%","line2":"Reach the next break sooner.","icon":"echo"}
+	{"id":"echo","name":"RESONANT CORE","line1":"Resonance gain +35%","line2":"Reach the next break sooner.","icon":"echo"},
+	{"id":"flow","name":"STEADY RHYTHM","line1":"Energy regeneration +25%","line2":"Recover your reserve faster.","icon":"cell"},
+	{"id":"armor","name":"STAGE ARMOR","line1":"Incoming damage -15%","line2":"Every hit takes a smaller toll.","icon":"heart"},
+	{"id":"impact","name":"HEAVY ACCENT","line1":"Stagger gain +25%","line2":"Create more openings for damage.","icon":"blade"},
+	{"id":"power","name":"ENCORE POWER","line1":"All direct damage +10%","line2":"Strengthens strikes and abilities.","icon":"fire"},
+	{"id":"reserve","name":"DEEPER RESERVES","line1":"Maximum energy +20 more","line2":"Stacks with Deep Capacitor.","icon":"cell"}
 ]
 var upgrades: Array[String] = []
 var loadout_index := Arsenal.DEFAULT
@@ -37,7 +42,11 @@ func has(id: String) -> bool:
 func stat(name: String) -> float:
 	match name:
 		"health": return float(Characters.ROSTER[loadout_index].health)+(25.0 if has("heart") else 0.0)
-		"energy": return 125.0 if has("cell") else 100.0
+		"energy": return (125.0 if has("cell") else 100.0)+(20.0 if has("reserve") else 0.0)
+		"regen": return 1.25 if has("flow") else 1.0
+		"armor": return 0.85 if has("armor") else 1.0
+		"impact": return 1.25 if has("impact") else 1.0
+		"power": return 1.1 if has("power") else 1.0
 		"melee": return 1.2 if has("edge") else 1.0
 		"ranged": return 1.2 if has("fire") else 1.0
 		"dodge_cost": return float(Characters.ROSTER[loadout_index].dodge_cost)*(0.75 if has("step") else 1.0)

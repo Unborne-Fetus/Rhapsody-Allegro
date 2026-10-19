@@ -116,7 +116,7 @@ func run_tests() -> void:
 	# Repeat rotations through both combat and the completion overlay.
 	for state_name in ["playing","tutorial_clear"]:
 		for rotation in 4:
-			for dimensions in [Vector2i(390,844),Vector2i(844,390),Vector2i(932,430)]:
+			for dimensions in [Vector2i(390,844),Vector2i(844,390),Vector2i(932,430),Vector2i(1280,446),Vector2i(667,375)]:
 				game.screen = state_name; root.size = dimensions; game.configure_phone(); await settle()
 				check(game.phone.portrait == (dimensions.y>dimensions.x),"Repeated orientation picks correct interface")
 				check(root.get_visible_rect().size.is_equal_approx(Vector2(root.content_scale_size)),"Viewport fills the new canvas without stale letterboxing")
@@ -125,6 +125,13 @@ func run_tests() -> void:
 					for item in game.phone.controls(game):
 						check(item[0].x-item[3]>=game.phone.canvas_size.x-rail,"Right buttons stay wholly inside side rail")
 					check(game.phone.stick_home().x+88<=rail,"Joystick stays wholly inside left rail")
+					var visible = Rect2(Vector2.ZERO,Vector2(root.size))
+					for auto in [true,false]:
+						game.profile.data.auto_attack = auto; game.side = true
+						for item in game.phone.controls(game):
+							var control = Rect2(item[0]-Vector2.ONE*item[3],Vector2.ONE*item[3]*2)
+							check(visible.encloses(root.get_final_transform()*control),"Entire action circle fits physical viewport after rotation")
+					check(visible.encloses(root.get_final_transform()*game.phone.pause_rect()),"Pause fits physical viewport")
 	await tap(9,game.buttons[0].rect.get_center())
 	check(game.screen == "loadout","Rotated tutorial-complete button hits its newly centered target")
 	prepare(); game.profile.data.auto_attack = false; game.used_touch = false

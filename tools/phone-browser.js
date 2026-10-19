@@ -11,6 +11,17 @@
     let queued = false;
     function sync() {
       queued = false;
+      // Embedded previews can report innerWidth wider than their visible area.
+      // Bound CSS geometry first, then derive the sole backing-buffer size.
+      const root = document.documentElement;
+      if (root?.clientWidth && canvas.style && typeof getComputedStyle === 'function') {
+        const css = getComputedStyle(canvas), viewport = window.visualViewport;
+        const width = Math.min(root.clientWidth, viewport?.width || root.clientWidth);
+        const height = Math.min(root.clientHeight, viewport?.height || root.clientHeight);
+        const inset = key => parseFloat(css.getPropertyValue(key)) || 0;
+        canvas.style.setProperty('width', Math.max(1,width-inset('left')-inset('right'))+'px','important');
+        canvas.style.setProperty('height', Math.max(1,height-inset('top')-inset('bottom'))+'px','important');
+      }
       const rect = canvas.getBoundingClientRect();
       if (rect.width < 1 || rect.height < 1) return;
       const ratio = window.devicePixelRatio || 1;

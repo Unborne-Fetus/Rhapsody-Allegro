@@ -51,7 +51,7 @@ func run_capture() -> void:
 		game.menu_focus = focus; game.upgrade_focus = focus; await capture("mechanic-"+str(focus))
 	game.command("menu"); game.command("select"); game.boss_page = 0; await capture("boss-select-original")
 	game.boss_page = 1; await capture("boss-select-songs")
-	for index in range(3,7):
+	for index in range(3,12):
 		game.command("menu"); game.practice = true; game.training = false; game.start_fight(index)
 		game.banner_time = 0; game.elapsed = 20; game.aim_snapshot = game.player
 		game.execute_pattern(game.bosses[index].patterns[0]); game.execute_pattern(game.bosses[index].patterns[1])

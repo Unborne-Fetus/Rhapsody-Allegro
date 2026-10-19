@@ -54,15 +54,19 @@ window.fetch = async function(resource, options) {
 };
 </script>'''.replace('CHUNKS',json.dumps(chunks)).replace('ENGINE_MIB',f'{len(wasm)/1048576:.1f}')
 html=(dest/'index.html').read_text()
+game_hash=hashlib.sha256((dest/'index.pck').read_bytes()).hexdigest()[:12]
+# Force every release to fetch its matching game pack, even behind a stale CDN.
+html=html.replace('index.pck',f'index-{game_hash}.pck')
+(dest/'index.pck').rename(dest/f'index-{game_hash}.pck')
 html=html.replace('<head>','<head>\n'+loader)
 html=html.replace('width=device-width, user-scalable=no, initial-scale=1.0','width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no')
 phone_script=(root/'tools/phone-browser.js').read_text()
-html=html.replace('const engine = new Engine(GODOT_CONFIG);',phone_script+'\nwindow.rhapsodyPrepareCanvas(GODOT_CONFIG);\nconst engine = new Engine(GODOT_CONFIG);')
+html=html.replace('const engine = new Engine(GODOT_CONFIG);',phone_script+f'\nGODOT_CONFIG.mainPack = "index-{game_hash}.pck";\nwindow.rhapsodyPrepareCanvas(GODOT_CONFIG);\nconst engine = new Engine(GODOT_CONFIG);')
 html=html.replace('<title>Rhapsody: Allegro</title>','<title>Rhapsody: Allegro — Play</title>')
 brand='''<div id="load-brand" role="status"><span>R / A</span><h1>RHAPSODY<br><em>ALLEGRO</em></h1><p id="load-detail">Preparing the first movement…</p><small>Two-thumb controls · Portrait or landscape · Keyboard and controller supported</small></div>'''
 css='''<style>
 html,body {overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;background:#0b1019}
-#canvas {touch-action:none;position:fixed!important;left:env(safe-area-inset-left,0px)!important;top:env(safe-area-inset-top,0px)!important;width:calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px))!important;height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important}
+#canvas {touch-action:none;position:fixed!important;left:env(safe-area-inset-left,0px)!important;top:env(safe-area-inset-top,0px)!important;right:env(safe-area-inset-right,0px)!important;bottom:env(safe-area-inset-bottom,0px)!important;width:calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px))!important;height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important}
 #status {background:#0b1019!important;color:#f2ebda;font-family:Arial,sans-serif}
 #status-splash {display:none!important}
 #load-brand {text-align:center;padding:20px}
@@ -77,7 +81,7 @@ html,body {overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-us
 html=html.replace('</head>',css+'\n</head>')
 html=html.replace('<div id="status">','<div id="status">'+brand)
 (dest/'index.html').write_text(html)
-(dest/'build-info.json').write_text(json.dumps({'version':'0.6.2','godot':'4.5.1','engine_sha256':hashlib.sha256(wasm).hexdigest(),'game_sha256':hashlib.sha256((dest/'index.pck').read_bytes()).hexdigest()},indent=2)+'\n')
+(dest/'build-info.json').write_text(json.dumps({'version':'0.7.0','godot':'4.5.1','engine_sha256':hashlib.sha256(wasm).hexdigest(),'game_sha256':hashlib.sha256((dest/f'index-{game_hash}.pck').read_bytes()).hexdigest()},indent=2)+'\n')
 # Content changes across builds: do not cache stable engine filenames forever.
 (dest/'_headers').write_text('/*.bin\n  Content-Type: application/octet-stream\n  Cache-Control: public, max-age=31536000, immutable\n/index.html\n  Cache-Control: no-cache\n')
 print(f'Packaged {len(wasm):,} engine bytes into {len(chunks)} chunks.')

@@ -74,7 +74,9 @@
       "SLOW BURN",
       "CHAIN REACTION",
       "GRAND DETONATION"
-    ]
+    ],
+    "movement": 190,
+    "tone": 270
   },
   {
     "name": "THE CINDER KING",
@@ -99,7 +101,9 @@
       "SPARK",
       "WILDFIRE",
       "INFERNO"
-    ]
+    ],
+    "movement": 225,
+    "tone": 185
   },
   {
     "name": "THE EVERLASTING PARADE",
@@ -124,7 +128,9 @@
       "OPENING NUMBER",
       "CALL AND RESPONSE",
       "NEVER-ENDING ENCORE"
-    ]
+    ],
+    "movement": 185,
+    "tone": 440
   },
   {
     "name": "THE FEEDBACK TYRANT",
@@ -149,6 +155,143 @@
       "SOUNDCHECK",
       "CRANK IT UP",
       "MAXIMUM NOIZE"
-    ]
+    ],
+    "movement": 175,
+    "tone": 95
+  },
+  {
+    "name": "THE STORM SISTERS",
+    "song": "It’s Raining Men",
+    "artist": "The Weather Girls",
+    "subtitle": "Storm / Shelter",
+    "color": "74caff",
+    "hp": 4100,
+    "interval": 0.92,
+    "speed": 300,
+    "movement": 175,
+    "tone": 330,
+    "patterns": [
+      "downpour",
+      "thunder_clap",
+      "eye_storm",
+      "cleave"
+    ],
+    "arena": "THE CLOUD NINE ROOFTOP",
+    "mechanic": "STORM / SHELTER",
+    "tip": "Falling silhouettes mark landings. Move into the clear column; the storm eye is safe.",
+    "phases": [
+      "FORECAST",
+      "CLOUDBURST",
+      "HALLELUJAH STORM"
+    ],
+    "followup": "thunder_clap"
+  },
+  {
+    "name": "THE STAR ASCENDANT",
+    "song": "Fame",
+    "artist": "Irene Cara",
+    "subtitle": "Spotlight / Crossover",
+    "color": "ff73c6",
+    "hp": 4200,
+    "interval": 0.82,
+    "speed": 310,
+    "movement": 210,
+    "tone": 392,
+    "patterns": [
+      "audition",
+      "star_run",
+      "curtain_call",
+      "cleave"
+    ],
+    "arena": "THE NEON SCHOOL OF ARTS",
+    "mechanic": "SPOTLIGHT / CROSSOVER",
+    "tip": "Spotlights lock before firing. Cross the stage between cues and avoid the star landing.",
+    "phases": [
+      "AUDITION",
+      "BREAKOUT",
+      "IMMORTAL ENCORE"
+    ],
+    "followup": "star_run"
+  },
+  {
+    "name": "THE SPELLBOUND EMPRESS",
+    "song": "I Put a Spell on You",
+    "artist": "Nina Simone",
+    "subtitle": "Piano / Safe Keys",
+    "color": "bba2ef",
+    "hp": 4400,
+    "interval": 1.02,
+    "speed": 285,
+    "movement": 155,
+    "tone": 220,
+    "patterns": [
+      "piano_keys",
+      "spell_circle",
+      "blue_note",
+      "cleave"
+    ],
+    "arena": "THE MIDNIGHT PIANO ROOM",
+    "mechanic": "PIANO / SAFE KEYS",
+    "tip": "Dark piano keys warn before striking. Read the ring: stand inside its eye or beyond its edge.",
+    "phases": [
+      "INCANTATION",
+      "DEEP BLUE",
+      "SOVEREIGN SPELL"
+    ],
+    "followup": "spell_circle"
+  },
+  {
+    "name": "THE DISCO ALCHEMIST",
+    "song": "More Spell on You",
+    "artist": "Eddie Johns",
+    "subtitle": "Groove / Counterstep",
+    "color": "ffd073",
+    "hp": 4500,
+    "interval": 0.88,
+    "speed": 315,
+    "movement": 190,
+    "tone": 294,
+    "patterns": [
+      "vinyl_cut",
+      "disco_spell",
+      "bassline",
+      "cleave"
+    ],
+    "arena": "THE GOLDEN GROOVE",
+    "mechanic": "GROOVE / COUNTERSTEP",
+    "tip": "Find the gap in each record ripple. Bass lines arrive in sequence; move between their cues.",
+    "phases": [
+      "NEEDLE DROP",
+      "MORE SPELL",
+      "ENDLESS GROOVE"
+    ],
+    "followup": "disco_spell"
+  },
+  {
+    "name": "THE SOUL MARSHAL",
+    "song": "War",
+    "artist": "Edwin Starr",
+    "subtitle": "Call / Response",
+    "color": "ff765d",
+    "hp": 4800,
+    "interval": 0.9,
+    "speed": 325,
+    "movement": 185,
+    "tone": 165,
+    "patterns": [
+      "drumline",
+      "crossfire",
+      "ceasefire",
+      "cleave"
+    ],
+    "arena": "THE CRIMSON SOUNDSTAGE",
+    "mechanic": "CALL / RESPONSE",
+    "tip": "Marching lanes warn in sequence. Follow the opening; the final call leaves a recovery window.",
+    "phases": [
+      "THE QUESTION",
+      "CALL AND RESPONSE",
+      "CEASEFIRE"
+    ],
+    "followup": "crossfire"
   }
 ]

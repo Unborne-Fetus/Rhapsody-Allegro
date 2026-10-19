@@ -1,6 +1,6 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.6.2** fixes phone rotation sizing, moves landscape controls into dedicated black side rails and keeps phone characters facing the boss. Higher jumps, top-left AUTO and deferred parrying remain. The phone interface adds a phone interface designed for two thumbs: larger controls, optional automatic basic attacks, portrait menus and an adaptive portrait arena camera. The seven-boss campaign, song encounters and fixed character kits remain.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.7.0** keeps mobile controls within the visible viewport through rotation and embedded previews. Nine musical encounters now feature human stage portraits, with five new bosses inspired by The Weather Girls, Irene Cara, Nina Simone, Eddie Johns and Edwin Starr. A full performance includes twelve bosses and eleven augmentation choices. Fixed character kits, automatic phone facing, higher jumps and deferred parrying remain.
 
 **[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
@@ -11,7 +11,7 @@ A Godot action boss rush that changes between top-down and side-scrolling combat
 - **Only Horizon fires player bullets.** The other three characters have melee abilities. Parrying is deferred; its implementation remains in source.
 - **Harder bosses:** more health, faster pressure, pursuit, close-range sweeps, anti-kiting mines and later-phase chains. Every attack retains a warning. Stagger openings are shorter and cannot permanently lock a boss.
 - **Contextual upgrade panels:** hover, focus or tap a card to read its core mechanics, including resonance, stagger and energy. Use CHOOSE to commit.
-- **Seven-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
+- **Twelve-movement campaign:** difficulty selection, augmentations between bosses, saved movement checkpoints, retry score rollback and separate difficulty / assist records.
 - **Training:** immortal dummy, optional attacks, manual perspective changes, range guides and damage / DPS readouts. Select a character before entering.
 - **Keyboard, mouse, controller and multitouch:** aspect-preserving scaling, portrait letterboxing, focus-loss pause, configurable volume, shake, flashes and assist mode.
 

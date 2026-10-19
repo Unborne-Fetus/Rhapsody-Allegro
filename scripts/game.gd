@@ -309,7 +309,7 @@ func command(action: String) -> void:
 		"close_help": screen = "playing"
 		_:
 			if action.begins_with("phone_inspect_"): upgrade_focus = clampi(int(action.trim_prefix("phone_inspect_")),0,upgrade_options.size()-1); return
-			if action.begins_with("page_"): boss_page = clampi(int(action.trim_prefix("page_")),0,1); return
+			if action.begins_with("page_"): boss_page = clampi(int(action.trim_prefix("page_")),0,ceili((bosses.size()-3)/4.0)); return
 			if action.begins_with("set_"): equip_set(int(action.trim_prefix("set_")),true); return
 			if action.begins_with("level_"): profile.data.difficulty = clampi(int(action.trim_prefix("level_")),0,2); profile.save_profile(); return
 			if action.begins_with("upgrade_"): choose_upgrade(action.trim_prefix("upgrade_")); return
@@ -522,7 +522,7 @@ func damage_boss(amount: float) -> void:
 		floats.append({"p":boss+Vector2(0,-55),"text":str(int(amount)),"life":0.55})
 		return
 	if training:
-		var dealt = amount*(1.3 if stagger_time>0 else 1.0)*songs.multiplier(boss_index)
+		var dealt = amount*run.stat("power")*(1.3 if stagger_time>0 else 1.0)*songs.multiplier(boss_index)
 		boss_flash = 0.08
 		fight_score += int(dealt)
 		training_damage += dealt; training_hit_count += 1; training_last_hit = dealt
@@ -530,7 +530,7 @@ func damage_boss(amount: float) -> void:
 		if training_window.size()>200: training_window.pop_front()
 		floats.append({"p":boss+Vector2(rng.randf_range(-20,20),-55),"text":str(int(dealt)),"life":0.55})
 		return
-	var dealt = amount*(1.3 if stagger_time>0 else 1.0)*songs.multiplier(boss_index)
+	var dealt = amount*run.stat("power")*(1.3 if stagger_time>0 else 1.0)*songs.multiplier(boss_index)
 	boss_hp = maxf(0,boss_hp-dealt)
 	fight_score += int(dealt*(1.0+style/100.0))
 	boss_flash = 0.08
@@ -551,7 +551,7 @@ func damage_boss(amount: float) -> void:
 
 func hurt(amount: float) -> void:
 	if invincible>0 or screen != "playing": return
-	hp = maxf(0,hp-amount*float(RunState.DIFFICULTIES[run.difficulty].damage)*float(Characters.ROSTER[weapon_index].incoming)*(0.5 if profile.data.assist else 1.0)*(0.5 if tutorial_active else 1.0))
+	hp = maxf(0,hp-amount*run.stat("armor")*float(RunState.DIFFICULTIES[run.difficulty].damage)*float(Characters.ROSTER[weapon_index].incoming)*(0.5 if profile.data.assist else 1.0)*(0.5 if tutorial_active else 1.0))
 	hits += 1
 	style = maxf(0,style-40); style_chain = 0
 	invincible = 0.55
@@ -598,7 +598,7 @@ func simulate(delta: float) -> void:
 		if melee_windup<=0: resolve_melee()
 	if screen != "playing": return
 	training_window = training_window.filter(func(hit): return elapsed-float(hit.time)<=5.0)
-	if not tutorial_active or tutorial.step != 4: energy = minf(run.stat("energy"),energy+delta*float(Characters.ROSTER[weapon_index].regen))
+	if not tutorial_active or tutorial.step != 4: energy = minf(run.stat("energy"),energy+delta*float(Characters.ROSTER[weapon_index].regen)*run.stat("regen"))
 	riposte_time = maxf(0,riposte_time-delta)
 	update_bleed(delta)
 	if screen != "playing": return
@@ -727,7 +727,7 @@ func update_boss(delta: float) -> void:
 	if boss_index>=3: destination = songs.destination(self)
 	if side: destination.y = 510
 	destination.x = clampf(destination.x,175,1110); destination.y = clampf(destination.y,240,540)
-	boss = boss.move_toward(destination,delta*([190,225,185,175][boss_index-3] if boss_index>=3 else 180+boss_index*25))
+	boss = boss.move_toward(destination,delta*(float(bosses[boss_index].get("movement",190)) if boss_index>=3 else 180+boss_index*25))
 	if boss.distance_to(player)<53: hurt(18)
 	attack_timer -= delta
 	if attack_timer<=0:
@@ -837,7 +837,7 @@ func _draw() -> void:
 
 func draw_menu() -> void:
 	text_at("R / A",Vector2(58,62),22,TEAL)
-	text_at("PHONE LAYOUT FIX  /  0.6.2",Vector2(896,59),14,MUTED)
+	text_at("MUSICAL ENCORE  /  0.7.0",Vector2(896,59),14,MUTED)
 	line(Vector2(58,82),Vector2(1222,82),Color("293340"))
 	if screen == "title":
 		text_at("A HYBRID-PERSPECTIVE BOSS RUSH",Vector2(94,157),16,TEAL)
@@ -899,9 +899,9 @@ func draw_menu() -> void:
 		button("BACK",Rect2(490,674,300,34),"back",true)
 	elif screen == "select":
 		centered("CHOOSE YOUR MOVEMENT",151,34)
-		centered("Four song encounters are available now. A full performance includes all seven bosses.",188,17,MUTED)
-		var first = 0 if boss_page == 0 else 3
-		var last = 3 if boss_page == 0 else bosses.size()
+		centered("Nine musical encounters. Twelve bosses in a full performance.",188,17,MUTED)
+		var first = 0 if boss_page == 0 else 3+(boss_page-1)*4
+		var last = 3 if boss_page == 0 else mini(first+4,bosses.size())
 		for i in range(first,last):
 			var slot = i-first
 			var x = 96+(slot%2)*552; var y = 220+(slot/2)*180
@@ -919,7 +919,8 @@ func draw_menu() -> void:
 			else: text_at("CLEAR PREVIOUS BOSS",Vector2(x+126,y+148),12,MUTED)
 		button("BACK",Rect2(96,620,160,44),"menu")
 		button("ORIGINAL TRIO",Rect2(282,620,235,44),"page_0",boss_page == 0)
-		button("SONG ENCOUNTERS",Rect2(535,620,265,44),"page_1",boss_page == 1)
+		for page in ceili((bosses.size()-3)/4.0):
+			button("SONGS "+str(page+1),Rect2(535+page*125,620,116,44),"page_"+str(page+1),boss_page == page+1)
 		button("TRAINING",Rect2(926,620,250,44),"training")
 	elif screen == "settings":
 		centered("TUNE YOUR EXPERIENCE",153,36)
@@ -1213,7 +1214,7 @@ func add_style(action: String,amount: float) -> void:
 
 func add_stagger(amount: float) -> void:
 	if stagger_lock>0 or stagger_time>0: return
-	stagger = minf(100,stagger+amount)
+	stagger = minf(100,stagger+amount*run.stat("impact"))
 	if stagger>=100:
 		stagger = 0; stagger_time = 1.25; stagger_lock = 7.0
 		windup = 0; charge_time = 0; followup_delay = 0; followup_pattern = ""; attack_timer = 1.1
@@ -1548,14 +1549,11 @@ func configure_phone() -> void:
 	phone_configuring = true
 	if phone_mode:
 		var physical = Vector2(get_tree().root.size)
-		if OS.has_feature("web"):
-			var value = JavaScriptBridge.eval("JSON.stringify({w:document.getElementById('canvas').getBoundingClientRect().width,h:document.getElementById('canvas').getBoundingClientRect().height})")
-			var metrics = JSON.parse_string(str(value))
-			if metrics is Dictionary and metrics.get("w",0)>0 and metrics.get("h",0)>0: physical = Vector2(metrics.w,metrics.h)
 		var ratio = physical.x/maxf(1,physical.y)
 		phone.portrait = ratio<1
 		var logical = Vector2i(720,maxi(1280,roundi(720/ratio))) if phone.portrait else Vector2i(maxi(1280,roundi(720*ratio)),720)
 		phone.canvas_size = Vector2(logical)
+		get_tree().root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
 		if get_tree().root.content_scale_size != logical:
 			if screen == "playing": screen = "paused"

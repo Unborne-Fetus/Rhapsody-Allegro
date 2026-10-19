@@ -22,8 +22,9 @@ func run_tests() -> void:
 	for u in game.RunState.active_upgrades():
 		if not run.has(u.id): run.upgrades.append(u.id)
 	check(run.choices(0).is_empty(),"Exhausted upgrades safe")
-	check(run.stat("health") == 125 and run.stat("energy") == 125,"Capacity upgrades")
+	check(run.stat("health") == 125 and run.stat("energy") == 145,"Capacity upgrades")
 	check(run.stat("dodge_cost") == 18 and run.stat("dodge_cd") == 0.36,"Dodge upgrades")
+	check(run.stat("regen") == 1.25 and run.stat("armor") == .85 and run.stat("impact") == 1.25 and run.stat("power") == 1.1,"Five encore upgrades expose their intended modifiers")
 	var snapshot = run.snapshot(2,true)
 	var restored = game.RunState.new()
 	check(restored.restore(snapshot) and restored.upgrades == run.upgrades and restored.assisted,"Checkpoint round trip")
@@ -84,11 +85,11 @@ func run_tests() -> void:
 	check(not game.profile.data.checkpoint.is_empty() and game.screen == "clear","Original finale now continues into song encounters")
 	for next in range(3,game.bosses.size()):
 		game.advance(); game.choose_upgrade(game.upgrade_options[0].id)
-		check(game.boss_index == next and game.run.upgrades.size() == next,"Seven-movement campaign carries upgrades")
+		check(game.boss_index == next and game.run.upgrades.size() == next,"Twelve-movement campaign carries upgrades")
 		game.command("menu"); game.continue_run()
 		check(game.boss_index == next and game.run.upgrades.size() == next,"Continue restores late campaign movement")
 		game.damage_boss(99999)
-	check(game.profile.data.checkpoint.is_empty(),"Seventh movement clears completed checkpoint")
+	check(game.profile.data.checkpoint.is_empty(),"Final movement clears completed checkpoint")
 	game.start_run(); game.touch_move = Vector2.ONE; game.touch_actions[1] = "shoot"
 	game._notification(game.NOTIFICATION_APPLICATION_FOCUS_OUT)
 	check(game.screen == "paused" and game.touch_move == Vector2.ZERO and game.touch_actions.is_empty(),"Focus loss pauses and clears touch actions")

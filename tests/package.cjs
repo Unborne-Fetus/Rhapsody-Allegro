@@ -13,8 +13,10 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
  assert.deepEqual(bytes,fs.readFileSync('build/web/index.wasm'));
  assert(WebAssembly.validate(bytes),'assembled engine must be valid WebAssembly');
  assert.equal(response.headers.get('Content-Type'),'application/wasm');
- const pack=await context.window.fetch('https://example.test/rhapsody/index.pck');
- assert.deepEqual(Buffer.from(await pack.arrayBuffer()),fs.readFileSync('dist/index.pck'));
+ const packName=fs.readdirSync('dist').find(name=>/^index-[a-f0-9]+\.pck$/.test(name));
+ assert(packName && html.includes('GODOT_CONFIG.mainPack = \"'+packName+'\"'),'engine explicitly preloads content-addressed pack');
+ const pack=await context.window.fetch('https://example.test/rhapsody/'+packName);
+ assert.deepEqual(Buffer.from(await pack.arrayBuffer()),fs.readFileSync('dist/'+packName));
  const bad={URL,Blob,Response,location:{href:'https://example.test/rhapsody/'},window:{fetch:async()=>new Response('missing',{status:404})}};
  vm.runInNewContext(loader,bad);
  await assert.rejects(bad.window.fetch('https://example.test/rhapsody/index.wasm'),/Engine download failed/);

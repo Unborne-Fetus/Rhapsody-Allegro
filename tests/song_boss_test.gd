@@ -15,11 +15,11 @@ func run_tests() -> void:
 	game = load("res://scenes/main.tscn").instantiate(); root.add_child(game)
 	game.set_process(false); game.sound.enabled = false; game.profile.path = "user://song-boss-tests.json"
 	game.profile.data.assist = false
-	check(game.bosses.size() == 7 and game.Encounters.last_index() == 6,"Seven encounter roster drives bounds")
+	check(game.bosses.size() == 12 and game.Encounters.last_index() == 11,"Twelve encounter roster drives bounds")
 	check(game.bosses[0].name == "THE METRONOME" and game.bosses[2].name == "THE CONDUCTOR","Original roster indices preserved")
-	var titles = ["Sexbomb","Burning Love","Can't Stop the Music","Cum On Feel the Noize"]
+	var titles = ["Sexbomb","Burning Love","Can't Stop the Music","Cum On Feel the Noize","It’s Raining Men","Fame","I Put a Spell on You","More Spell on You","War"]
 	var signatures: Array[String] = []
-	for index in range(3,7):
+	for index in range(3,12):
 		check(game.bosses[index].song == titles[index-3],"Correct song attribution")
 		check(game.bosses[index].phases.size() == 3 and not game.bosses[index].tip.is_empty(),"Phase names and tactical guidance")
 		for phase in 3:
@@ -91,18 +91,41 @@ func run_tests() -> void:
 	for h in game.hazards:
 		h.step(h.warning+0.1)
 		check(not h.intersects(Vector2(h.origin.x,560)),"Amplifier opening fits player radius at floor height")
+	# New signature mechanics retain usable safety and genuine damage windows.
+	prepare(7); game.attack_number = 2; game.execute_pattern("downpour")
+	for h in game.hazards:
+		h.step(h.warning+.01)
+		check(not h.intersects(Vector2(190+2*178,420)),"Storm leaves its advertised landing column clear")
+	prepare(7); game.execute_pattern("eye_storm"); var eye = game.hazards[0]; eye.step(1.31)
+	check(not eye.intersects(eye.origin) and eye.intersects(eye.origin+Vector2(150,0)),"Storm shelter has a real safe eye and damaging outer band")
+	prepare(8); game.execute_pattern("audition"); var frozen = game.hazards[0].origin
+	game.player += Vector2(100,100); game.simulate(.1)
+	check(game.hazards[0].origin == frozen,"Audition spotlight does not invisibly track player")
+	prepare(8,1,true); game.attack_number = 2; game.execute_pattern("curtain_call")
+	for h in game.hazards:
+		h.step(1.3)
+		check(not h.intersects(Vector2(135+2*210+72,560)),"Curtain call preserves a full safe aisle")
+	prepare(9,1,true); game.execute_pattern("piano_keys")
+	for h in game.hazards:
+		h.step(h.warning+.01); check(not h.intersects(Vector2(h.origin.x+40,450)),"Jump clears Nina's active piano keys")
+	prepare(10); game.execute_pattern("vinyl_cut"); var record = game.hazards[0]; record.step(1.4)
+	check(not record.intersects(record.origin+Vector2.RIGHT.rotated(record.gap_angle)*record.radius),"Vinyl groove gap is genuinely safe")
+	prepare(11); game.execute_pattern("ceasefire"); var initial_position = game.boss
+	game.update_boss(.1)
+	check(game.boss == initial_position and game.songs.recovery>2,"Ceasefire creates a real punish window")
+	game.songs.tick(3); check(game.songs.recovery == 0,"Ceasefire recovery expires")
 	# Checkpoint and profile bounds migrate beyond the old three-movement limit.
 	var run = game.RunState.new()
-	for index in 7: check(run.restore({"boss":index}),"Checkpoint restores movement "+str(index))
-	check(not run.restore({"boss":7}) and not run.restore({"boss":-1}),"Invalid movement rejected")
-	game.profile.data.unlocked = 6; game.profile.save_profile()
+	for index in 12: check(run.restore({"boss":index}),"Checkpoint restores movement "+str(index))
+	check(not run.restore({"boss":12}) and not run.restore({"boss":-1}),"Invalid movement rejected")
+	game.profile.data.unlocked = 11; game.profile.save_profile()
 	var profile = game.Profile.new(); profile.path = game.profile.path; profile.load_profile()
-	check(profile.data.unlocked == 6,"Unlock survives roundtrip beyond original trio")
+	check(profile.data.unlocked == 11,"Unlock survives roundtrip beyond original trio")
 	game.profile.data.unlocked = 0; prepare(6); game.damage_boss(99999)
 	check(game.screen == "clear" and game.profile.data.unlocked == 0,"Direct song practice cannot skip campaign unlocks")
 	# One simulated minute in every phase, difficulty, and new encounter.
 	for difficulty in 3:
-		for index in range(3,7):
+		for index in range(3,12):
 			for phase in 3:
 				prepare(index,phase,phase == 1); game.run.difficulty = difficulty
 				game.boss_hp = game.max_hp*([.85,.5,.2][phase])
