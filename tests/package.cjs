@@ -20,6 +20,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
  await assert.rejects(bad.window.fetch('https://example.test/rhapsody/index.wasm'),/Engine download failed/);
  assert(!fs.readdirSync('dist').some(name=>name.startsWith('.index.') || name.endsWith('.import') || name.includes('.pck-')),'temporary export files must not be shipped');
  assert(html.includes('viewport-fit=cover') && html.includes('safe-area-inset-left') && html.includes('100dvh'),'phone viewport respects safe areas and browser bars');
+ assert(html.indexOf('window.rhapsodyPrepareCanvas(GODOT_CONFIG)')>=0 && html.indexOf('window.rhapsodyPrepareCanvas(GODOT_CONFIG)')<html.indexOf('const engine = new Engine(GODOT_CONFIG)'),'phone canvas ownership must be configured before engine creation');
  assert(html.includes('rhapsodyFullscreen') && html.includes('wakeLock'),'phone browser helpers bundled');
  const largest=Math.max(...fs.readdirSync('dist').filter(x=>x.endsWith('.bin')).map(x=>fs.statSync('dist/'+x).size));
  assert(largest<=25*1024*1024);

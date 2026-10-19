@@ -1,26 +1,38 @@
 extends RefCounted
 ## Touch-first presentation. Arena simulation and all combat rules remain shared.
 var portrait := false
+var canvas_size := Vector2(1280,720)
+var menu_offset := Vector2.ZERO
 var character_focus := 2
 var boss_focus := 0
 var help_page := 0
 func size() -> Vector2:
 	return Vector2(720,1280) if portrait else Vector2(1280,720)
+func rail_width() -> float:
+	return maxf(200,(canvas_size.x-1280)/2)
 func controls(g: Node2D) -> Array:
 	var items: Array
 	if portrait:
-		items = [[Vector2(565,1060),"dodge","DODGE",88.0],[Vector2(424,916),"shoot","ABILITY",76.0],[Vector2(620,866),"parry","PARRY",65.0],[Vector2(425,1163),"burst","BREAK",65.0]]
-		if g.side: items.append([Vector2(615,1210),"jump","JUMP",53.0])
-		if not g.profile.data.auto_attack: items.append([Vector2(620,866),"melee","STRIKE",65.0])
+		var extra = maxf(0,canvas_size.y-1280)
+		items = [[Vector2(565,1060+extra),"dodge","DODGE",88.0],[Vector2(424,916+extra),"shoot","ABILITY",76.0],[Vector2(425,1163+extra),"burst","BREAK",65.0]]
+		if g.parry_enabled: items.append([Vector2(620,866+extra),"parry","PARRY",65.0])
+		if g.side: items.append([Vector2(615,1210+extra),"jump","JUMP",53.0])
+		if not g.profile.data.auto_attack: items.append([Vector2(620,866+extra),"melee","STRIKE",65.0])
 	else:
-		items = [[Vector2(1110,551),"dodge","DODGE",68.0],[Vector2(971,448),"shoot","ABILITY",59.0],[Vector2(1165,394),"parry","PARRY",55.0],[Vector2(949,619),"burst","BREAK",53.0]]
-		if g.side: items.append([Vector2(814,534),"jump","JUMP",51.0])
-		if not g.profile.data.auto_attack: items.append([Vector2(1165,394),"melee","STRIKE",55.0])
-	return items.filter(func(item): return g.parry_enabled or item[1] != "parry")
+		var actions: Array = [["shoot","ABILITY"],["dodge","DODGE"],["burst","BREAK"]]
+		if g.parry_enabled: actions.append(["parry","PARRY"])
+		if g.side: actions.append(["jump","JUMP"])
+		if not g.profile.data.auto_attack: actions.append(["melee","STRIKE"])
+		items = []
+		var spacing = minf(146,520.0/actions.size())
+		var first = 400.0-spacing*(actions.size()-1)/2.0
+		var radius = minf(64,spacing*0.44)
+		for i in actions.size(): items.append([Vector2(canvas_size.x-rail_width()/2,first+i*spacing),actions[i][0],actions[i][1],radius])
+	return items
 func stick_home() -> Vector2:
-	return Vector2(160,1060) if portrait else Vector2(205,540)
+	return Vector2(160,1060+maxf(0,canvas_size.y-1280)) if portrait else Vector2(rail_width()/2,460)
 func pause_rect() -> Rect2:
-	return Rect2(586,20,108,92) if portrait else Rect2(1130,22,110,92)
+	return Rect2(586,20,108,92) if portrait else Rect2(canvas_size.x-rail_width()/2-55,22,110,92)
 func auto_rect() -> Rect2:
 	return Rect2(16,12,120,80)
 func heading(g: Node2D,title: String,sub: String = "") -> void:
@@ -29,7 +41,7 @@ func heading(g: Node2D,title: String,sub: String = "") -> void:
 	if not sub.is_empty(): g.wrapped_text(sub,Vector2(32,132),size().x-64,21,g.MUTED)
 func button(g: Node2D,label: String,rect: Rect2,action: String,primary: bool = false) -> void:
 	if rect.size.y<92: rect = Rect2(rect.position-Vector2(0,(92-rect.size.y)/2),Vector2(rect.size.x,92))
-	g.buttons.append({"rect":rect,"action":action})
+	g.buttons.append({"rect":Rect2(rect.position+menu_offset,rect.size),"action":action})
 	g.draw_style_box(g.panel_style(g.TEAL if primary else Color("202b37"),g.TEAL if primary else Color("52616e")),rect)
 	var fontsize = 26 if portrait else 25
 	var width = g.font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,fontsize).x
@@ -117,33 +129,48 @@ func draw_menu(g: Node2D) -> void:
 			button(g,"BACK",Rect2(32,size().y-112,656 if portrait else 500,82),"back",true)
 func draw_combat(g: Node2D) -> void:
 	g.draw_arena()
-	var width = size().x
-	g.text_at(g.bosses[g.boss_index].name,Vector2(150,42),25,g.PAPER)
-	g.text_at("TUTORIAL" if g.tutorial_active else "MOVEMENT %02d" % (g.boss_index+1),Vector2(150,75),19,g.MUTED)
-	g.bar(Rect2(30,92,width-180,12),g.boss_hp/g.max_hp,Color(g.bosses[g.boss_index].color))
-	g.text_at("HP %d" % g.hp,Vector2(30,145),23,g.CORAL)
-	g.bar(Rect2(128,130,160 if portrait else 230,14),g.hp/g.run.stat("health"),g.CORAL)
-	g.text_at("ENERGY",Vector2(328 if portrait else 445,145),20,g.TEAL)
-	g.bar(Rect2(430 if portrait else 550,132,235 if portrait else 230,12),g.energy/g.run.stat("energy"),g.TEAL)
-	g.text_at("RESONANCE %d / 100" % g.resonance,Vector2(32,737) if portrait else Vector2(840,145),19,g.GOLD)
+	if not portrait:
+		var left = g.arena_origin.x
+		g.draw_rect(Rect2(0,0,left,canvas_size.y),Color("05090f"))
+		g.draw_rect(Rect2(canvas_size.x-left,0,left,canvas_size.y),Color("05090f"))
+	var left = 150.0 if portrait else g.arena_origin.x+24
+	var available = 720.0 if portrait else canvas_size.x-2*g.arena_origin.x
+	g.text_at(g.bosses[g.boss_index].name,Vector2(left,42),25,g.PAPER)
+	g.text_at("TUTORIAL" if g.tutorial_active else "MOVEMENT %02d" % (g.boss_index+1),Vector2(left,75),19,g.MUTED)
+	var bar_left = 30.0 if portrait else left
+	g.bar(Rect2(bar_left,92,540 if portrait else available-48,12),g.boss_hp/g.max_hp,Color(g.bosses[g.boss_index].color))
+	if portrait:
+		g.text_at("HP %d" % g.hp,Vector2(30,145),23,g.CORAL)
+		g.bar(Rect2(128,130,160,14),g.hp/g.run.stat("health"),g.CORAL)
+		g.text_at("ENERGY",Vector2(328,145),20,g.TEAL)
+		g.bar(Rect2(430,132,235,12),g.energy/g.run.stat("energy"),g.TEAL)
+		g.text_at("RESONANCE %d / 100" % g.resonance,Vector2(32,737),19,g.GOLD)
+	else:
+		var column = (available-48)/3
+		g.text_at("HP %d" % g.hp,Vector2(left,145),20,g.CORAL)
+		g.bar(Rect2(left+92,132,column-108,12),g.hp/g.run.stat("health"),g.CORAL)
+		g.text_at("ENERGY",Vector2(left+column,145),18,g.TEAL)
+		g.bar(Rect2(left+column+92,132,column-108,12),g.energy/g.run.stat("energy"),g.TEAL)
+		g.text_at("RESONANCE %d / 100" % g.resonance,Vector2(left+column*2,145),18,g.GOLD)
 	button(g,"II",pause_rect(),"phone_pause")
 	if g.tutorial_active:
 		var lesson: Dictionary = g.Tutorial.LESSONS[g.tutorial.step]
 		var y = 634 if portrait else 180
-		var x = 32 if portrait else 340
-		var w = 656 if portrait else 570
+		var x = 32.0 if portrait else g.arena_origin.x+170*g.arena_scale
+		var w = 656.0 if portrait else 720*g.arena_scale
 		g.draw_style_box(g.panel_style(Color("101e29"),g.TEAL),Rect2(x,y-28,w,150 if portrait else 132))
 		var next = g.wrapped_text("%d / 8 · %s" % [g.tutorial.step+1,lesson.title],Vector2(x+15,y),w-30,23,g.TEAL)
 		var hint: String = ["Drag the LEFT stick into the checkpoint.","Approach the boss. Land three AUTO strikes.","Tap ABILITY with your RIGHT thumb.","Move toward the shot and tap DODGE.","Close in. Land two strikes to recover energy.","Tap the gold BREAK button.","Flick the LEFT stick up, or tap JUMP.","Keep moving. Dodge, use skills and attack."][g.tutorial.step]
 		if g.tutorial.step == 1 and not g.profile.data.auto_attack: hint = "Hold STRIKE to land three melee hits."
 		g.wrapped_text(hint if portrait else lesson.goal,Vector2(x+15,next+8),w-30,24)
-		if not portrait: g.text_at(hint,Vector2(335,321),21,g.TEAL)
+		if not portrait: g.text_at(hint,Vector2(x,321),18,g.TEAL)
 	elif portrait:
 		g.wrapped_text("Left thumb moves. Right thumb dodges and uses skills.",Vector2(32,640),656 if g.profile.data.auto_attack else 300,23,g.MUTED)
 		g.text_at("Turn sideways for a larger arena.",Vector2(32,716),20,g.TEAL)
 	if g.screen == "playing": draw_controls(g)
 	else: draw_overlay(g)
 func draw_controls(g: Node2D) -> void:
+	menu_offset = Vector2.ZERO
 	var origin = g.touch_origin if g.move_finger>=0 else stick_home()
 	g.draw_circle(origin,112 if portrait else 88,Color(g.TEAL,.10))
 	g.draw_circle(origin,112 if portrait else 88,Color(g.TEAL,.35),false,3,true)
@@ -164,7 +191,10 @@ func draw_controls(g: Node2D) -> void:
 	g.draw_style_box(g.panel_style(Color("20332e") if g.profile.data.auto_attack else Color("202b37"),g.TEAL if g.profile.data.auto_attack else g.MUTED),face)
 	g.text_at("AUTO "+("ON" if g.profile.data.auto_attack else "OFF"),face.position+Vector2(9,33),18,g.TEAL if g.profile.data.auto_attack else g.MUTED)
 func draw_overlay(g: Node2D) -> void:
-	g.draw_rect(Rect2(Vector2.ZERO,size()),Color(.02,.035,.055,.95))
+	g.buttons.clear()
+	g.draw_rect(Rect2(Vector2.ZERO,canvas_size),Color(.02,.035,.055,1.0))
+	menu_offset = (canvas_size-size())/2
+	g.draw_set_transform(menu_offset)
 	match g.screen:
 		"paused":
 			heading(g,"PAUSED","Your character stays fixed. Automatic basic attacks are optional.")
@@ -179,6 +209,11 @@ func draw_overlay(g: Node2D) -> void:
 			heading(g,"FIRST NOTES COMPLETE","Your first real performance awaits.")
 			actions(g,[["CHOOSE A PERFORMANCE","start"],["TITLE SCREEN","menu"]])
 func draw(g: Node2D) -> void:
-	g.draw_rect(Rect2(Vector2.ZERO,size()),g.INK)
-	if g.screen in ["title","select","settings","loadout","intermission","help","arsenal"]: draw_menu(g)
+	menu_offset = Vector2.ZERO
+	g.draw_set_transform(Vector2.ZERO)
+	g.draw_rect(Rect2(Vector2.ZERO,canvas_size),g.INK)
+	if g.screen in ["title","select","settings","loadout","intermission","help","arsenal"]:
+		menu_offset = (canvas_size-size())/2
+		g.draw_set_transform(menu_offset); draw_menu(g)
 	else: draw_combat(g)
+	g.draw_set_transform(Vector2.ZERO)

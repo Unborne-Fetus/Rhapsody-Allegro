@@ -1,6 +1,6 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.6.1** raises jump height, moves AUTO into a small top-left HUD control and defers parrying. The phone interface adds a phone interface designed for two thumbs: larger controls, optional automatic basic attacks, portrait menus and an adaptive portrait arena camera. The seven-boss campaign, song encounters and fixed character kits remain.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.6.2** fixes phone rotation sizing, moves landscape controls into dedicated black side rails and keeps phone characters facing the boss. Higher jumps, top-left AUTO and deferred parrying remain. The phone interface adds a phone interface designed for two thumbs: larger controls, optional automatic basic attacks, portrait menus and an adaptive portrait arena camera. The seven-boss campaign, song encounters and fixed character kits remain.
 
 **[Play in your browser](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — private owner testing link. The browser version is a single-threaded Godot WebAssembly export of the same simulation as Windows.
 
@@ -17,11 +17,11 @@ A Godot action boss rush that changes between top-down and side-scrolling combat
 
 ## Play with two thumbs
 
-Phones automatically get a dedicated interface in portrait or landscape. The left control area is a floating movement stick. In side view, flick it upward to jump and downward to drop through platforms; a right-side JUMP button is also available. The right thumb can slide between large DODGE and ABILITY buttons without lifting. Holding ABILITY repeats it; BREAK spends full resonance.
+Phones automatically get a dedicated interface in portrait or landscape. The left black rail in landscape is a floating movement stick; portrait controls stay below the arena. In side view, flick it upward to jump and downward to drop through platforms; a right-side JUMP button is also available. The right thumb can slide between large DODGE and ABILITY buttons without lifting. Holding ABILITY repeats it; BREAK spends full resonance.
 
 **AUTO starts enabled on phones.** Basic melee attacks trigger only when the boss is within reach. Horizon also fires automatically from range while preserving enough energy for a dodge. Abilities, dodges and breaks remain manual. Tap the small top-left AUTO control to disable it and expose a manual STRIKE button; the setting persists. Auto attack uses the same damage, windups, cooldowns, energy and collision rules as manual input.
 
-Portrait has large menu cards, a separate lower control area and a camera that frames both fighters. Landscape gives the arena more space. Rotating the phone pauses a fight and clears held input. Upgrade cards use a large inspection list plus a separate confirmation button. The tutorial includes thumb-specific instructions. Safe-area padding keeps browser controls away from notches and home indicators, page gestures are disabled on the canvas, and supported browsers can keep the screen awake. Fullscreen is optional in Settings.
+Portrait has large menu cards, a separate lower control area and a camera that frames both fighters. Landscape uses the full available canvas, with a central arena and black control rails on either side. Phone characters face the boss even while retreating, and phone strikes track the boss during windup. Rotating the phone pauses a fight, clears held input and rebuilds the layout and touch targets. Completion and pause menus are centered in the new orientation with opaque backgrounds. Upgrade cards use a large inspection list plus a separate confirmation button. The tutorial includes thumb-specific instructions. Safe-area padding keeps browser controls away from notches and home indicators, page gestures are disabled on the canvas, and supported browsers can keep the screen awake. Fullscreen is optional in Settings.
 
 ## Song encounters
 
@@ -83,6 +83,7 @@ godot --headless --export-release Web
 godot --headless --export-release Windows
 python3 tools/package_web.py
 node tests/package.cjs
+node tests/phone_browser.cjs
 python3 tools/serve.py
 ```
 
@@ -103,3 +104,5 @@ GitHub Actions builds Web and Windows artifacts and runs the browser smoke test.
 See [foundation notes](docs/FOUNDATION.md). No third-party art or recordings are bundled. Godot's engine and default font retain upstream licenses. No license for original game source has been granted yet.
 
 Jump launch speed is 740 units/second, up from 570 (about 69% more height at unchanged gravity). Parry input, automatic parry windows and parry upgrades are disabled through `combat_rules.gd`; the code and legacy regression coverage are retained for future development. Existing Golden Window upgrades convert to an unowned active upgrade when a checkpoint loads.
+
+Phone canvas sizing uses the actual CSS canvas rectangle and device-pixel ratio before Godot starts. Resize / orientation observers keep the buffer aligned after safe-area changes, iframe resizing and delayed engine boot. Deterministic Node tests cover these cases; native captures cover repeated portrait-to-wide-landscape rotation. Physical mobile browser testing remains unverified in this environment.

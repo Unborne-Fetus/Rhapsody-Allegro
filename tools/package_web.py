@@ -57,7 +57,7 @@ html=(dest/'index.html').read_text()
 html=html.replace('<head>','<head>\n'+loader)
 html=html.replace('width=device-width, user-scalable=no, initial-scale=1.0','width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no')
 phone_script=(root/'tools/phone-browser.js').read_text()
-html=html.replace('</body>','<script>'+phone_script+'</script></body>')
+html=html.replace('const engine = new Engine(GODOT_CONFIG);',phone_script+'\nwindow.rhapsodyPrepareCanvas(GODOT_CONFIG);\nconst engine = new Engine(GODOT_CONFIG);')
 html=html.replace('<title>Rhapsody: Allegro</title>','<title>Rhapsody: Allegro — Play</title>')
 brand='''<div id="load-brand" role="status"><span>R / A</span><h1>RHAPSODY<br><em>ALLEGRO</em></h1><p id="load-detail">Preparing the first movement…</p><small>Two-thumb controls · Portrait or landscape · Keyboard and controller supported</small></div>'''
 css='''<style>
@@ -77,7 +77,7 @@ html,body {overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-us
 html=html.replace('</head>',css+'\n</head>')
 html=html.replace('<div id="status">','<div id="status">'+brand)
 (dest/'index.html').write_text(html)
-(dest/'build-info.json').write_text(json.dumps({'version':'0.6.1','godot':'4.5.1','engine_sha256':hashlib.sha256(wasm).hexdigest(),'game_sha256':hashlib.sha256((dest/'index.pck').read_bytes()).hexdigest()},indent=2)+'\n')
+(dest/'build-info.json').write_text(json.dumps({'version':'0.6.2','godot':'4.5.1','engine_sha256':hashlib.sha256(wasm).hexdigest(),'game_sha256':hashlib.sha256((dest/'index.pck').read_bytes()).hexdigest()},indent=2)+'\n')
 # Content changes across builds: do not cache stable engine filenames forever.
 (dest/'_headers').write_text('/*.bin\n  Content-Type: application/octet-stream\n  Cache-Control: public, max-age=31536000, immutable\n/index.html\n  Cache-Control: no-cache\n')
 print(f'Packaged {len(wasm):,} engine bytes into {len(chunks)} chunks.')

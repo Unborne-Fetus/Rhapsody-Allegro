@@ -22,4 +22,11 @@ func capture_all() -> void:
 		game.screen = "paused"; await capture(tag+"pause")
 		game.command("menu"); game.start_tutorial(); game.tutorial.step = 6; game.setup_tutorial_stage()
 		await capture(tag+"tutorial")
+	game.screen = "tutorial_clear"
+	for turn in 3:
+		root.size = Vector2i(390,844); game.configure_phone(); await capture("rotate-portrait-"+str(turn))
+		root.size = Vector2i(1280,446); game.configure_phone(); await capture("rotate-wide-"+str(turn))
+	game.screen = "playing"; game.tutorial_active = false; game.start_fight(3); game.banner_time = 0
+	game.player = Vector2(500,440); game.boss = Vector2(850,420); game.profile.data.auto_attack = false; game.side = true
+	game.update_phone_facing(); await capture("wide-all-controls")
 	print("PHONE_PRESENTATION_COMPLETE"); quit()

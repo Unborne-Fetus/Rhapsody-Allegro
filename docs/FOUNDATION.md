@@ -1,4 +1,4 @@
-# Foundation, version 0.6.1
+# Foundation, version 0.6.2
 
 Rhapsody: Allegro uses one Godot simulation for browser and desktop. The prototype combines action boss fights with top-down / side-scrolling transitions. Combat has no required beat timing. Final art, story and soundtrack remain open for feedback.
 
@@ -38,9 +38,9 @@ See SONG_BOSSES.md for the concepts, attack catalog and source song attribution.
 
 ## Phone interface
 
-Coarse touch devices select the phone interface at boot. Logical presentation is 1280×720 in landscape and 720×1280 in portrait. A portrait camera frames the player and boss horizontally, zooming out promptly when they separate and easing closer when they approach. The clipped hazard layer receives the identical arena transform. Combat simulation retains its original arena coordinates.
+Coarse touch devices select the phone interface at boot. Landscape keeps a 720-unit height and expands its logical width to the actual canvas aspect ratio. Portrait keeps a 720-unit width and expands its height for tall phones. A portrait camera frames the player and boss horizontally, zooming out promptly when they separate and easing closer when they approach. The clipped hazard layer receives the identical arena transform. Combat simulation retains its original arena coordinates.
 
-Touch routing tracks the movement finger independently from right-thumb actions. Sliding into a new action activates it once; leaving the hit region clears held fire. Releasing or cancelling a touch, losing focus or rotating cannot leave a held action behind. Orientation changes pause encounters. Browser chrome changes within one orientation preserve thumb ownership. Menu actions use large targets and portrait cards.
+Touch routing tracks the movement finger independently from right-thumb actions. Sliding into a new action activates it once; leaving the hit region clears held fire. Releasing or cancelling a touch, losing focus or rotating cannot leave a held action behind. Orientation changes pause encounters. Changes to the presentation size clear touch ownership and pause an active encounter. Menu actions use large targets and portrait cards.
 
 Phone auto attacks are an optional saved input preference, enabled by default. They call existing melee / rifle methods and never modify damage or timing. Rifle fire reserves dodge energy, and the tutorial's ability objective still requires a manual skill input. Basic melee auto attacks can satisfy its three-hit objective. The manual strike button appears when auto is disabled. Character selection locks remain enforced in every phone menu.
 
@@ -53,3 +53,11 @@ Jump launch speed rises from 570 to 740 units/second with gravity unchanged at 1
 AUTO is a small top-left HUD button with a larger invisible touch target, independent of the movement area. The header shifts right to keep it readable. The former parry control is hidden in both touch layouts; the manual strike button uses that freed space when automatic attacks are off.
 
 `combat_rules.gd` keeps parry disabled by default. Keyboard, controller, touch, automatic saber windows, stale timers and projectile collision all respect the gate. The implementation and opt-in legacy tests remain. The parry tutorial becomes a two-hit energy-recovery lesson, Golden Window is excluded from new choices, and old checkpoints convert it to an unowned active upgrade. Aria's current passive restores 8 extra energy on finishers, while her future riposte implementation is retained behind the gate.
+
+## Rotation, side rails and facing
+
+On touch browsers, `rhapsodyPrepareCanvas` runs before Engine creation and switches canvas sizing to external ownership. ResizeObserver, visual-viewport / window events and orientation settling callbacks synchronize the backing buffer to the canvas CSS rectangle times device-pixel ratio. A width/height MutationObserver also repairs Godot's initial project-size assignment after a slow download. Desktop retains Godot's normal adaptive policy. The game reads the same CSS rectangle on web, uses a reentry guard when rebuilding its logical viewport, and fills the full canvas without inaccessible engine letterboxing.
+
+Landscape reserves at least 200 logical units per rail. Wider screens use their additional space for wider black rails. The arena and clipped hazards share a centered transform; HUD and menus adapt separately. Joystick and button hit areas live entirely inside the rails. Menus translate both their drawing and registered hit rectangles into the same centered coordinates. Portrait controls anchor to the bottom of the taller viewport. Opaque phone overlays prevent underlying HUD text from appearing through the result screen.
+
+Phone facing follows the current boss direction independently from movement, input source and AUTO. Pending phone melee strikes also update their direction toward the boss; desktop attack commitment remains unchanged. Phone regression tests cover facing while retreating / jumping, repeated rotations in fights and completion menus, full viewport coverage and control containment inside both rails. `tests/phone_browser.cjs` covers canvas sizing at multiple pixel ratios, embedded viewport sizes, repeated rotation and late engine initialization without claiming a real browser playtest.

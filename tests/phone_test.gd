@@ -5,6 +5,12 @@ var game: Node2D
 func check(condition: bool,message: String) -> void:
 	checks += 1
 	if not condition: failures += 1; push_error(message)
+func action_point(action: String) -> Vector2:
+	for item in game.phone.controls(game):
+		if item[1] == action: return item[0]
+	return Vector2(-999,-999)
+func menu_point(p: Vector2) -> Vector2:
+	return p+game.phone.menu_offset
 func _initialize() -> void: call_deferred("run_tests")
 func settle() -> void:
 	game.queue_redraw(); await process_frame; await process_frame
@@ -26,13 +32,13 @@ func run_tests() -> void:
 	game.set_process(false); game.sound.enabled = false; game.profile.path = "user://phone-test-profile.json"
 	game.profile.data.auto_attack = true; game.phone_mode = true
 	root.size = Vector2i(844,390); game.configure_phone(); await settle()
-	check(not game.phone.portrait and root.content_scale_size == Vector2i(1280,720),"Landscape phone uses full arena layout")
+	check(not game.phone.portrait and root.content_scale_size.y == 720 and root.content_scale_size.x>1280,"Landscape phone uses full arena layout")
 	prepare(); await settle()
-	await touch(0,Vector2(205,540)); await drag(0,Vector2(275,540))
+	await touch(0,game.phone.stick_home()); await drag(0,game.phone.stick_home()+Vector2(70,0))
 	check(game.move_finger == 0 and game.touch_move.x>0.8,"Left thumb steers without an attack finger")
-	await touch(1,Vector2(1110,551))
+	await touch(1,action_point("dodge"))
 	check(game.dash_time>0 and game.touch_actions.get(1) == "dodge","Right thumb dodges while left moves")
-	await drag(1,Vector2(971,448))
+	await drag(1,action_point("shoot"))
 	check(game.shoot_cd>0 and game.touch_actions.get(1) == "shoot","Right thumb slides from dodge to ability")
 	check(game.move_finger == 0 and game.touch_move.x>0.8,"Skill slide preserves movement finger")
 	await drag(1,Vector2(1165,394))
@@ -40,13 +46,13 @@ func run_tests() -> void:
 	var cd = game.parry_cd; await drag(1,Vector2(1162,397))
 	check(game.parry_cd == cd,"Touch cannot activate deferred parry")
 	await drag(1,Vector2(700,200)); check(not game.touch_actions.has(1),"Sliding outside clears held attack")
-	await touch(1,Vector2(700,200),false); await touch(0,Vector2(275,540),false)
+	await touch(1,Vector2(700,200),false); await touch(0,game.phone.stick_home()+Vector2(70,0),false)
 	check(game.touch_move == Vector2.ZERO and game.touches.is_empty(),"Both thumb releases clear state")
 	prepare(); game.side = true; game.player.y = 560; game.ground_grace = .1
-	await touch(0,Vector2(205,540)); await drag(0,Vector2(205,455))
+	await touch(0,game.phone.stick_home()); await drag(0,game.phone.stick_home()+Vector2(0,-85))
 	check(game.velocity.y<0,"Flicking left thumb up jumps in platform view")
-	game.velocity.y = 1; await drag(0,Vector2(205,450)); check(game.velocity.y == 1,"Held upward stick does not repeat jumps")
-	await drag(0,Vector2(205,620)); check(game.touch_move.y>.65,"Left thumb down drops through platforms")
+	game.velocity.y = 1; await drag(0,game.phone.stick_home()+Vector2(0,-90)); check(game.velocity.y == 1,"Held upward stick does not repeat jumps")
+	await drag(0,game.phone.stick_home()+Vector2(0,80)); check(game.touch_move.y>.65,"Left thumb down drops through platforms")
 	prepare(); game.boss = game.player+Vector2(100,0); game.phone_basic_attack()
 	check(not game.melee_snapshot.is_empty(),"Automatic basic strike starts in reach")
 	game.resolve_melee(); check(game.training_damage>0,"Automatic strike lands actual shared combat damage")
@@ -65,24 +71,24 @@ func run_tests() -> void:
 	game.profile.data.auto_attack = true; game._notification(game.NOTIFICATION_APPLICATION_FOCUS_OUT)
 	check(game.screen == "paused" and game.touch_actions.is_empty() and game.move_finger == -1,"Focus loss pauses and clears phone input")
 	root.size = Vector2i(390,844); game.configure_phone(); await settle()
-	check(game.phone.portrait and root.content_scale_size == Vector2i(720,1280),"Portrait phone gets native tall interface")
+	check(game.phone.portrait and root.content_scale_size.x == 720 and root.content_scale_size.y>1280,"Portrait phone gets native tall interface")
 	check(game.arena_scale>=.62 and game.arena_scale<=.95,"Portrait arena and hazard layer share scale")
 	game.update_phone_camera(1)
 	check((game.player*game.arena_scale+game.arena_origin).x>25 and (game.boss*game.arena_scale+game.arena_origin).x<695,"Portrait camera keeps both fighters in view")
 	check(game.hazard_view.get_parent().position == game.arena_origin+game.FIELD.position*game.arena_scale,"Hazard clipping stays aligned")
-	prepare(); await settle(); await touch(0,Vector2(160,1060)); await drag(0,Vector2(245,1060))
-	await touch(1,Vector2(565,1060)); check(game.dash_time>0 and game.touch_move.x>.8,"Portrait supports two-thumb movement and dodge")
-	await tap(2,Vector2(640,60))
+	prepare(); await settle(); await touch(0,game.phone.stick_home()); await drag(0,game.phone.stick_home()+Vector2(85,0))
+	await touch(1,action_point("dodge")); check(game.dash_time>0 and game.touch_move.x>.8,"Portrait supports two-thumb movement and dodge")
+	await tap(2,game.phone.pause_rect().get_center())
 	check(game.screen == "paused" and game.touches.is_empty(),"Large portrait pause clears all fingers")
 	game.command("menu"); await settle()
 	check(game.buttons.all(func(b):return b.rect.size.y>=80),"Phone menu buttons meet large touch target size")
 	game.command("start"); await settle(); var selected = game.profile.data.weapon
-	await tap(3,Vector2(535,555))
+	await tap(3,menu_point(Vector2(535,555)))
 	check(game.profile.data.weapon == (selected+1)%4,"Portrait character selection works by thumb")
 	game.screen = "intermission"; game.upgrade_options = [game.RunState.UPGRADES[7],game.RunState.UPGRADES[1],game.RunState.UPGRADES[4]]; game.upgrade_focus = 0; await settle()
-	await tap(3,Vector2(350,700)); check(game.upgrade_focus == 1 and game.screen == "intermission","Large upgrade list inspects mechanics")
-	await tap(3,Vector2(350,937)); check(game.screen == "playing" and game.run.has("cell"),"Separate confirmation accepts upgrade")
-	await touch(0,Vector2(160,1060)); await drag(0,Vector2(245,1060))
+	await tap(3,menu_point(Vector2(350,700))); check(game.upgrade_focus == 1 and game.screen == "intermission","Large upgrade list inspects mechanics")
+	await tap(3,menu_point(Vector2(350,937))); check(game.screen == "playing" and game.run.has("cell"),"Separate confirmation accepts upgrade")
+	await touch(0,game.phone.stick_home()); await drag(0,game.phone.stick_home()+Vector2(85,0))
 	game.command("phone_auto")
 	check(game.move_finger == 0 and game.touch_move.x>.8,"Auto preference change preserves left thumb movement")
 	root.size = Vector2i(844,390); game.configure_phone()
@@ -107,6 +113,28 @@ func run_tests() -> void:
 	check(is_equal_approx(game.player.y,450),"Higher jump can reach and land on the tutorial platform")
 	check(game.phone.auto_rect().position.y<20 and game.phone.auto_rect().end.y<100,"Small auto control lives in top-left HUD")
 	check(not game.phone.auto_rect().grow(150).has_point(game.phone.stick_home()),"Auto is safely separated from the movement thumb")
+	# Repeat rotations through both combat and the completion overlay.
+	for state_name in ["playing","tutorial_clear"]:
+		for rotation in 4:
+			for dimensions in [Vector2i(390,844),Vector2i(844,390),Vector2i(932,430)]:
+				game.screen = state_name; root.size = dimensions; game.configure_phone(); await settle()
+				check(game.phone.portrait == (dimensions.y>dimensions.x),"Repeated orientation picks correct interface")
+				check(root.get_visible_rect().size.is_equal_approx(Vector2(root.content_scale_size)),"Viewport fills the new canvas without stale letterboxing")
+				if not game.phone.portrait:
+					var rail = game.phone.rail_width()
+					for item in game.phone.controls(game):
+						check(item[0].x-item[3]>=game.phone.canvas_size.x-rail,"Right buttons stay wholly inside side rail")
+					check(game.phone.stick_home().x+88<=rail,"Joystick stays wholly inside left rail")
+	await tap(9,game.buttons[0].rect.get_center())
+	check(game.screen == "loadout","Rotated tutorial-complete button hits its newly centered target")
+	prepare(); game.profile.data.auto_attack = false; game.used_touch = false
+	game.player = Vector2(500,440); game.boss = Vector2(700,440); game.touch_move = Vector2.LEFT
+	game.simulate(.016)
+	check(game.facing.is_equal_approx(game.player.direction_to(game.boss)),"Phone movement away from boss keeps facing boss")
+	game.melee(); game.boss = game.player+Vector2(-80,0); game.update_phone_facing()
+	check(game.melee_snapshot.facing.is_equal_approx(Vector2.LEFT),"Phone strike tracks boss while winding up")
+	game.melee_snapshot.clear(); game.melee_cd = 0; game.side = true; game.touch_move = Vector2.RIGHT; game.simulate(.016)
+	check(game.facing.is_equal_approx(game.player.direction_to(game.boss)),"Phone platform movement keeps facing boss")
 	game.command("menu"); game.profile.save_profile(); var profile = game.Profile.new(); profile.path = game.profile.path; profile.load_profile()
 	check(profile.data.auto_attack == game.profile.data.auto_attack,"Auto attack preference persists")
 	DirAccess.remove_absolute(game.profile.path); game.queue_free()

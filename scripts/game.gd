@@ -24,6 +24,7 @@ const FIELD := Rect2(100,164,1080,440)
 var parry_enabled := CombatRules.PARRY_ENABLED
 var phone = PhoneUI.new()
 var phone_mode := false
+var phone_configuring := false
 var phone_jump_held := false
 var arena_origin := Vector2.ZERO
 var arena_scale := 1.0
@@ -447,7 +448,7 @@ func melee() -> void:
 	melee_cd = float(weapon.melee_cooldown[step])
 	combo_time = melee_cd+0.65
 	var target_dir = player.direction_to(boss)
-	if used_touch or gamepad or held(KEY_K): facing = target_dir
+	if phone_mode or used_touch or gamepad or held(KEY_K): facing = target_dir
 	else: facing = player.direction_to(mouse_world())
 	var dash_strike = dash_time>0
 	melee_snapshot = weapon.duplicate(true)
@@ -468,7 +469,7 @@ func shoot() -> void:
 	if energy<float(character.cost): return
 	energy -= float(character.cost)
 	shoot_cd = float(character.cooldown)
-	var aim = player.direction_to(boss) if used_touch or gamepad or held(KEY_J) else player.direction_to(mouse_world())
+	var aim = player.direction_to(boss) if phone_mode or used_touch or gamepad or held(KEY_J) else player.direction_to(mouse_world())
 	facing = aim
 	if weapon_index != 3:
 		var attack = Arsenal.SETS[weapon_index].duplicate(true)
@@ -582,6 +583,7 @@ func _process(raw_delta: float) -> void:
 		floats = floats.filter(func(n): return n.life>0)
 		for ring in rings: ring.r += 950*delta; ring.life -= delta
 		rings = rings.filter(func(r): return r.life>0)
+	if phone_mode: update_phone_facing()
 	shake = maxf(0,shake-delta*45)
 	queue_redraw()
 
@@ -610,7 +612,7 @@ func simulate(delta: float) -> void:
 	if profile.data.assist: hp = minf(run.stat("health"),hp+delta*0.7)
 	var move = move_input()
 	if move.length()>0.15: last_move = move.normalized()
-	if move.length()>0.15 and (used_touch or gamepad): facing = Vector2(signf(move.x),0) if side else move.normalized()
+	if not phone_mode and move.length()>0.15 and (used_touch or gamepad): facing = Vector2(signf(move.x),0) if side else move.normalized()
 	if side:
 		ground_grace = maxf(0,ground_grace-delta)
 		jump_buffer = maxf(0,jump_buffer-delta)
@@ -634,6 +636,7 @@ func simulate(delta: float) -> void:
 		player.y = clampf(player.y,190,580)
 	player.x = clampf(player.x,125,1155)
 	if dash_time>0: emit_sparks(player,TEAL,2)
+	if phone_mode: update_phone_facing()
 	var shooting = held(KEY_J) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) or "shoot" in touch_actions.values()
 	var pads = Input.get_connected_joypads()
 	if not pads.is_empty(): shooting = shooting or Input.get_joy_axis(pads[0],JOY_AXIS_TRIGGER_RIGHT)>0.25 or Input.is_joy_button_pressed(pads[0],JOY_BUTTON_RIGHT_SHOULDER)
@@ -834,7 +837,7 @@ func _draw() -> void:
 
 func draw_menu() -> void:
 	text_at("R / A",Vector2(58,62),22,TEAL)
-	text_at("MOVEMENT UPDATE  /  0.6.1",Vector2(896,59),14,MUTED)
+	text_at("PHONE LAYOUT FIX  /  0.6.2",Vector2(896,59),14,MUTED)
 	line(Vector2(58,82),Vector2(1222,82),Color("293340"))
 	if screen == "title":
 		text_at("A HYBRID-PERSPECTIVE BOSS RUSH",Vector2(94,157),16,TEAL)
@@ -1541,22 +1544,35 @@ func draw_character_portrait(p: Vector2,index: int) -> void:
 	else: draw_arc(p+Vector2(0,-26),19,PI,TAU,20,c,5,true); line(p+Vector2(15,15),p+Vector2(47,-2),c,5)
 
 func configure_phone() -> void:
+	if phone_configuring: return
+	phone_configuring = true
 	if phone_mode:
-		var physical = get_tree().root.size
-		phone.portrait = physical.y>physical.x
-		var logical = Vector2i(720,1280) if phone.portrait else Vector2i(1280,720)
+		var physical = Vector2(get_tree().root.size)
+		if OS.has_feature("web"):
+			var value = JavaScriptBridge.eval("JSON.stringify({w:document.getElementById('canvas').getBoundingClientRect().width,h:document.getElementById('canvas').getBoundingClientRect().height})")
+			var metrics = JSON.parse_string(str(value))
+			if metrics is Dictionary and metrics.get("w",0)>0 and metrics.get("h",0)>0: physical = Vector2(metrics.w,metrics.h)
+		var ratio = physical.x/maxf(1,physical.y)
+		phone.portrait = ratio<1
+		var logical = Vector2i(720,maxi(1280,roundi(720/ratio))) if phone.portrait else Vector2i(maxi(1280,roundi(720*ratio)),720)
+		phone.canvas_size = Vector2(logical)
+		get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
 		if get_tree().root.content_scale_size != logical:
 			if screen == "playing": screen = "paused"
-			clear_touch()
+			clear_touch(); buttons.clear()
 			get_tree().root.content_scale_size = logical
 		used_touch = true
-	arena_scale = 0.62 if phone_mode and phone.portrait else 1.0
-	arena_origin = Vector2(-36,120) if phone_mode and phone.portrait else Vector2.ZERO
-	if phone_mode and phone.portrait: update_phone_camera(1.0)
+	arena_scale = 1.0; arena_origin = Vector2.ZERO
+	if phone_mode:
+		if phone.portrait: update_phone_camera(1.0)
+		else:
+			arena_scale = minf(1,(phone.canvas_size.x-400)/1280.0)
+			arena_origin = Vector2((phone.canvas_size.x-1280*arena_scale)/2,(720-720*arena_scale)/2)
 	if is_instance_valid(hazard_view):
 		var clip = hazard_view.get_parent()
 		clip.position = arena_origin+FIELD.position*arena_scale
 		clip.scale = Vector2.ONE*arena_scale
+	phone_configuring = false
 	queue_redraw()
 
 func phone_touch(event: InputEventScreenTouch) -> void:
@@ -1569,9 +1585,12 @@ func phone_touch(event: InputEventScreenTouch) -> void:
 	if phone.pause_rect().has_point(event.position): command("phone_pause"); return
 	if phone.auto_rect().has_point(event.position): command("phone_auto"); return
 	touches[event.index] = event.position
-	if event.position.x<phone.size().x/2 and event.position.y>(740 if phone.portrait else 300) and move_finger == -1:
+	if event.position.x<(phone.size().x/2 if phone.portrait else phone.rail_width()) and event.position.y>(phone.canvas_size.y-500 if phone.portrait else 200) and move_finger == -1:
 		move_finger = event.index
-		touch_origin = event.position.clamp(phone.stick_home()-Vector2(80,65),phone.stick_home()+Vector2(80,65))
+		var horizontal = 80.0 if phone.portrait else maxf(0,phone.rail_width()/2-92)
+		var lower = phone.canvas_size.y-500 if phone.portrait else 210.0
+		var upper = phone.canvas_size.y-(120 if phone.portrait else 100)
+		touch_origin = Vector2(clampf(event.position.x,phone.stick_home().x-horizontal,phone.stick_home().x+horizontal),clampf(event.position.y,lower,upper))
 		update_phone_stick(event.position)
 	else: route_phone_action(event.index,event.position)
 
@@ -1627,3 +1646,11 @@ func update_phone_camera(delta: float) -> void:
 		var clip = hazard_view.get_parent()
 		clip.position = arena_origin+FIELD.position*arena_scale
 		clip.scale = Vector2.ONE*arena_scale
+
+func update_phone_facing() -> void:
+	if not phone_mode: return
+	var direction = player.direction_to(boss)
+	if direction.length_squared()<0.001: return
+	facing = direction
+	if not melee_snapshot.is_empty(): melee_snapshot.facing = direction
+	if not active_melee.is_empty(): active_melee.facing = direction
