@@ -1,4 +1,4 @@
-# The Living Score — 0.8.1 pixel performers
+# The Living Score — 0.8.2 pixel performers and eco renderer
 
 All twelve bosses retain their painted stage-fantasy atlas. The four playable characters now use a separate low-resolution sprite atlas. Musical identities remain explicit: a percussion knight, glass opera singer and orchestral conductor lead the original trio. The nine song encounters retain their performer-inspired identities. Bram is the heavy drummer, Vex the rapid bassist, Aria the balanced guitarist and Lyra the singer with the only player sound-wave projectiles. Existing character stats and combat shapes remain intact.
 
@@ -13,6 +13,12 @@ Create one transparent 4×4 production sprite atlas in cohesive detailed hand-pa
 `assets/musicians.svg` is a transparent nearest-pixel-style atlas (1440 × 224), four rows of 40 × 56 pixel cells. Each character has 36 separate *poses* rather than translated duplicates: four frames for each of the four top-down directions, four side idle, six side run, four jump, four attack and two hurt. There are 144 individual keyframed poses across the four performers. The sprites have different faces, hairstyles, outfits and instrument silhouettes, and the cell layout can be retouched without changing engine logic.
 
 `scripts/pixel_performers.gd` selects the source rectangle according to facing, actual velocity, jump velocity, attack animation and hurt animation. `stage_art.gd` sends player and character-selection portraits to this atlas while retaining the original art for bosses. Damage/weapon balance and the 1.25-second projection bridge are unchanged. These are crisp pixel shapes represented as SVG so Godot can import them as a single atlas texture; no large painted image is scaled down to imitate pixel art.
+
+## Low-power drawing
+
+The ECO RENDERER switch persists in the user profile. Web and mobile builds default to it on; desktop builds default to full detail. It reduces cosmetic particle budgets, background geometry and curve segments. It throttles CanvasItem redraws to approximately 30 Hz while fixed-step combat simulation remains at 60 Hz when hardware can sustain it. Godot itself is capped at 60 frames per second to avoid unnecessary high-refresh work. Danger telegraphs are never removed, including the landing silhouettes in the Raining Men encounter. Rendering and sound changes do not modify boss HP, weapon damage, timing constants, difficulty or recorded results. Cosmetic sparks use a separate random-number generator so the chosen rendering mode cannot consume gameplay randomness.
+
+`scripts/sound.gd` caches up to 96 short generated tones by pitch, duration and gain, checking for an available voice before creating samples. Repeated UI and attack sounds reuse PCM. `scripts/game.gd` reuses UI panel style resources and removes expired visual instances in place rather than allocating filtered arrays each frame. `scripts/hazard_view.gd` maintains warning visibility in ECO mode with reduced outline segments.
 
 ## Original boss scores
 

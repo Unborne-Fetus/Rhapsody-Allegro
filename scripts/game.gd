@@ -138,6 +138,10 @@ var banner := ""
 var banner_time := 0.0
 var shake := 0.0
 var buttons: Array = []
+var panel_style_cache: Dictionary = {}
+var render_elapsed := 0.0
+const SIMULATION_STEP := 1.0/60.0
+var simulation_elapsed := 0.0
 var menu_focus := -1
 var touches: Dictionary = {}
 var touch_origin := Vector2.ZERO
@@ -150,8 +154,11 @@ var gamepad_previous: Dictionary = {}
 var settings_from := "title"
 var menu_history: Array[String] = []
 var rng := RandomNumberGenerator.new()
+var visual_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	# Keep CPU/GPU costs bounded on high-refresh browsers and inexpensive devices.
+	Engine.max_fps = 60
 	font = ThemeDB.fallback_font
 	bosses = Encounters.roster()
 	profile.load_profile()
@@ -169,6 +176,7 @@ func _ready() -> void:
 	apply_volume()
 	print("RHAPSODY_BOOT_READY")
 	rng.seed = 91428
+	visual_rng.seed = 67311
 	phone_mode = DisplayServer.is_touchscreen_available() or OS.has_feature("android") or OS.has_feature("ios")
 	if OS.has_feature("web"):
 		phone_mode = bool(JavaScriptBridge.eval("navigator.maxTouchPoints > 0 && (matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent))"))
@@ -313,6 +321,7 @@ func command(action: String) -> void:
 		"back": close_panel()
 		"assist": profile.data.assist = not profile.data.assist; profile.save_profile()
 		"shake": profile.data.shake = not profile.data.shake; profile.save_profile()
+		"eco_mode": profile.data.eco_mode = not profile.data.eco_mode; profile.save_profile(); render_elapsed = 0.0
 		"volume": profile.data.volume = fmod(float(profile.data.volume)+0.2,1.2); apply_volume(); profile.save_profile()
 		"music": profile.data.music = not profile.data.music; profile.save_profile()
 		"pulse": metronome = not metronome
@@ -583,9 +592,12 @@ func hurt(amount: float) -> void:
 		screen = "dead"; melee_snapshot.clear(); melee_windup = 0
 
 func emit_sparks(p: Vector2,color: Color,count: int) -> void:
-	for i in count:
-		if sparks.size()>=300: break
-		sparks.append({"p":p,"v":Vector2.RIGHT.rotated(rng.randf()*TAU)*rng.randf_range(40,270),"life":rng.randf_range(0.2,0.65),"color":color})
+	# Effects alone must not exhaust the CPU on a low-end browser. This never
+	# changes attacks, hitboxes, warning effects, stagger or score.
+	var limit := 80 if profile.data.eco_mode else 300
+	var budget := mini((count+1)/2 if profile.data.eco_mode else count,limit-sparks.size())
+	for i in maxi(0,budget):
+		sparks.append({"p":p,"v":Vector2.RIGHT.rotated(visual_rng.randf()*TAU)*visual_rng.randf_range(40,270),"life":visual_rng.randf_range(0.2,0.65),"color":color})
 
 func _process(raw_delta: float) -> void:
 	if phone_mode and phone.portrait: update_phone_camera(minf(raw_delta,0.04))
@@ -593,18 +605,48 @@ func _process(raw_delta: float) -> void:
 	total_time += delta
 	gamepad_input()
 	if screen == "playing":
-		if hit_stop>0: hit_stop = maxf(0,hit_stop-delta)
-		else: simulate(delta)
+		# Fixed simulation steps keep hits and fast projectile checks consistent
+		# when the GPU can only manage ~30 rendered frames per second.
+		simulation_elapsed = minf(simulation_elapsed+delta,SIMULATION_STEP*3.0)
+		while simulation_elapsed>=SIMULATION_STEP:
+			simulation_elapsed -= SIMULATION_STEP
+			if hit_stop>0.0: hit_stop = maxf(0.0,hit_stop-SIMULATION_STEP)
+			else: simulate(SIMULATION_STEP)
+			if screen != "playing":
+				simulation_elapsed = 0.0
+				break
+	else:
+		simulation_elapsed = 0.0
 	if screen in ["playing","clear","dead"]:
-		for spark in sparks: spark.p += spark.v*delta; spark.v *= pow(0.06,delta); spark.life -= delta
-		sparks = sparks.filter(func(s): return s.life>0)
-		for number in floats: number.p.y -= delta*42; number.life -= delta
-		floats = floats.filter(func(n): return n.life>0)
-		for ring in rings: ring.r += 950*delta; ring.life -= delta
-		rings = rings.filter(func(r): return r.life>0)
+		# Reverse removal avoids rebuilding three arrays and allocating lambda
+		# closures on every simulation frame.
+		var damping := pow(0.06,delta)
+		for i in range(sparks.size()-1,-1,-1):
+			var spark: Dictionary = sparks[i]
+			spark.p += spark.v*delta
+			spark.v *= damping
+			spark.life -= delta
+			if spark.life<=0.0: sparks.remove_at(i)
+		for i in range(floats.size()-1,-1,-1):
+			var number: Dictionary = floats[i]
+			number.p.y -= delta*42.0
+			number.life -= delta
+			if number.life<=0.0: floats.remove_at(i)
+		for i in range(rings.size()-1,-1,-1):
+			var ring: Dictionary = rings[i]
+			ring.r += 950.0*delta
+			ring.life -= delta
+			if ring.life<=0.0: rings.remove_at(i)
 	sound.sync_music(boss_index,phase,screen == "playing",screen == "paused",bool(profile.data.music),delta)
 	if phone_mode: update_phone_facing()
 	shake = maxf(0,shake-delta*45)
+	# Simulation remains at up to 60 ticks/sec. Eco mode redraws the main
+	# canvas at ~30 Hz independently, so input and projectile collisions are
+	# never downsampled to the visual refresh rate.
+	if profile.data.eco_mode:
+		render_elapsed += raw_delta
+		if render_elapsed < 1.0/30.0: return
+		render_elapsed = fmod(render_elapsed,1.0/30.0)
 	queue_redraw()
 
 func simulate(delta: float) -> void:
@@ -623,7 +665,8 @@ func simulate(delta: float) -> void:
 		melee_windup = maxf(0,melee_windup-delta)
 		if melee_windup<=0: resolve_melee()
 	if screen != "playing": return
-	training_window = training_window.filter(func(hit): return elapsed-float(hit.time)<=5.0)
+	for i in range(training_window.size()-1,-1,-1):
+		if elapsed-float(training_window[i].time)>5.0: training_window.remove_at(i)
 	if not tutorial_active or tutorial.step != 4: energy = minf(run.stat("energy"),energy+delta*float(Characters.ROSTER[weapon_index].regen)*run.stat("regen"))
 	riposte_time = maxf(0,riposte_time-delta)
 	update_bleed(delta)
@@ -711,7 +754,10 @@ func simulate(delta: float) -> void:
 				else: hurt(16); shot.life = 0
 	for shot in shots:
 		if shot.friendly and shot.life<=0 and shot.distance_traveled>=shot.max_distance: emit_sparks(shot.position,shot.tint,3)
-	shots = shots.filter(func(s): return s.life>0 and Rect2(50,110,1180,560).has_point(s.position))
+	for i in range(shots.size()-1,-1,-1):
+		var shot = shots[i]
+		if shot.life<=0.0 or not Rect2(50,110,1180,560).has_point(shot.position):
+			shots.remove_at(i)
 
 func change_perspective(to_side: bool) -> void:
 	if to_side == side: return
@@ -839,11 +885,16 @@ func button(label: String,rect: Rect2,action: String,primary: bool = false) -> v
 	text_at(label,rect.position+Vector2((rect.size.x-w)/2,rect.size.y/2+7),size,INK if primary else PAPER)
 
 func panel_style(fill: Color,border: Color) -> StyleBoxFlat:
-	var style = StyleBoxFlat.new()
+	# These two colors repeat in every menu frame; reuse GPU-ready style
+	# resources instead of creating dozens of StyleBoxFlat objects each draw.
+	var key := fill.to_html(true)+"|"+border.to_html(true)
+	if panel_style_cache.has(key): return panel_style_cache[key]
+	var style := StyleBoxFlat.new()
 	style.bg_color = fill
 	style.border_color = border
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(5)
+	panel_style_cache[key] = style
 	return style
 
 func bar(rect: Rect2,value: float,color: Color) -> void:
@@ -855,9 +906,10 @@ func _draw() -> void:
 	if phone_mode:
 		phone.draw(self); return
 	draw_rect(Rect2(0,0,1280,720),INK)
-	for i in 36:
-		var x = float(i)*39+fmod(total_time*7,39)
-		line(Vector2(x,0),Vector2(x-200,720),Color(0.25,0.38,0.43,0.045))
+	if not profile.data.eco_mode:
+		for i in 36:
+			var x = float(i)*39+fmod(total_time*7,39)
+			line(Vector2(x,0),Vector2(x-200,720),Color(0.25,0.38,0.43,0.045))
 	if screen in ["title","select","settings","loadout","intermission","help","arsenal"]:
 		draw_menu()
 		return
@@ -956,13 +1008,14 @@ func draw_menu() -> void:
 	elif screen == "settings":
 		centered("TUNE YOUR EXPERIENCE",153,36)
 		centered("Settings save automatically. Assist records stay separate.",191,17,MUTED)
-		button("VOLUME   %d%%" % int(float(profile.data.volume)*100),Rect2(390,224,500,45),"volume")
-		button("SCREEN SHAKE   "+("ON" if profile.data.shake else "OFF"),Rect2(390,281,500,45),"shake")
-		button("ASSIST MODE   "+("ON" if profile.data.assist else "OFF"),Rect2(390,338,500,45),"assist")
-		button("IMPACT FLASHES   "+("ON" if profile.data.flashes else "REDUCED"),Rect2(390,395,500,45),"flashes")
-		button("PRACTICE PULSE   "+("ON" if metronome else "OFF"),Rect2(390,452,500,45),"pulse")
-		button("BOSS MUSIC   "+("ON" if profile.data.music else "OFF"),Rect2(390,509,500,45),"music")
-		centered("Combat never requires playing on the beat.",563,16,MUTED)
+		button("ECO RENDERER   "+("ON" if profile.data.eco_mode else "OFF"),Rect2(390,209,500,44),"eco_mode")
+		button("VOLUME   %d%%" % int(float(profile.data.volume)*100),Rect2(390,259,500,44),"volume")
+		button("SCREEN SHAKE   "+("ON" if profile.data.shake else "OFF"),Rect2(390,309,500,44),"shake")
+		button("ASSIST MODE   "+("ON" if profile.data.assist else "OFF"),Rect2(390,359,500,44),"assist")
+		button("IMPACT FLASHES   "+("ON" if profile.data.flashes else "REDUCED"),Rect2(390,409,500,44),"flashes")
+		button("PRACTICE PULSE   "+("ON" if metronome else "OFF"),Rect2(390,459,500,44),"pulse")
+		button("BOSS MUSIC   "+("ON" if profile.data.music else "OFF"),Rect2(390,509,500,44),"music")
+		centered("ECO reduces decorative effects, not boss attacks or hitboxes.",569,16,MUTED)
 		button("BACK",Rect2(490,602,300,48),"back",true)
 	elif screen == "intermission":
 		centered("AN INTERLUDE",155,37,GOLD)
@@ -1016,8 +1069,9 @@ func draw_arena() -> void:
 	draw_set_transform(arena_origin+offset*arena_scale,0,Vector2.ONE*arena_scale)
 	draw_rect(FIELD,Color("101a26"))
 	draw_architecture(color)
-	for x in range(100,1181,54): line(Vector2(x,164),Vector2(x,604),Color("1b2936"))
-	for y in range(164,605,44):
+	var grid_size := 108 if profile.data.eco_mode else 54
+	for x in range(100,1181,grid_size): line(Vector2(x,164),Vector2(x,604),Color("1b2936"))
+	for y in range(164,605,88 if profile.data.eco_mode else 44):
 		var fold = sin(PI*shift_blend()) if shift_left>0 else 0.0
 		var yy = lerpf(float(y),384+(y-384)*.45,fold)
 		line(Vector2(100,yy),Vector2(1180,yy),Color("1b2936"))
@@ -1036,8 +1090,8 @@ func draw_arena() -> void:
 			line(visual.position,Vector2(visual.end.x,visual.position.y),Color(TEAL,side_blend),2)
 		for i in 14: line(Vector2(110+i*80,598),Vector2(125+i*80,584),Color("49616a"))
 	else:
-		draw_arc(Vector2(640,385),177,0,TAU,90,Color("263848"),1,true)
-		draw_arc(Vector2(640,385),172,0,TAU,90,Color("1e303e"),1,true)
+		draw_arc(Vector2(640,385),177,0,TAU,24 if profile.data.eco_mode else 90,Color("263848"),1,true)
+		if not profile.data.eco_mode: draw_arc(Vector2(640,385),172,0,TAU,90,Color("1e303e"),1,true)
 	text_at(bosses[boss_index].arena,Vector2(124,192),12,Color("587080"))
 	if windup>0:
 		var alpha = 0.25+0.2*sin(total_time*25)
@@ -1263,7 +1317,8 @@ func update_hazards(delta: float) -> void:
 		if hazard.intersects(player):
 			if dash_time>0: perfect_dodge()
 			else: hurt(22)
-	hazards = hazards.filter(func(h): return not h.expired())
+	for i in range(hazards.size()-1,-1,-1):
+		if hazards[i].expired(): hazards.remove_at(i)
 	if hazards.size()>24: hazards.resize(24)
 
 func touch_layout() -> Array:
@@ -1276,6 +1331,14 @@ func touch_layout() -> Array:
 	return layout.filter(func(item): return parry_enabled or item[1] != "parry")
 
 func draw_architecture(color: Color) -> void:
+	if profile.data.eco_mode:
+		# Keep stage identity and *all* danger warnings. The Raining Men
+		# landing silhouettes also remain because they help read the attack.
+		draw_rect(Rect2(110,589,1060,7),Color(color,0.12))
+		for x in [170,640,1110]:
+			draw_rect(Rect2(x,193,3,370),Color(color,0.10))
+		if boss_index == 7: songs.draw_arena(self,boss_index,color)
+		return
 	if boss_index>=3:
 		songs.draw_arena(self,boss_index,color); return
 	var faint = Color(color,0.10)

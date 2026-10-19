@@ -25,6 +25,42 @@ func run_tests() -> void:
 	game.profile.path = "user://weapon-test-profile.json"
 	var sets = game.Arsenal.SETS
 	check(sets.size() == 4 and game.Characters.ROSTER.size() == 4,"Four characters and assigned sets")
+	# Eco settings are purely visual; collision logic and character kits remain unchanged.
+	var low_style = game.panel_style(Color("182432"),Color("4a6472"))
+	check(low_style == game.panel_style(Color("182432"),Color("4a6472")),"UI panel resources are reused between draws")
+	var cached_styles = game.panel_style_cache.size()
+	game.panel_style(Color("182432"),Color("4a6472"))
+	check(game.panel_style_cache.size() == cached_styles,"Repeated menu rendering does not allocate more style resources")
+	game.sound.enabled = true
+	game.sound.tone(440.0,0.05,0.13)
+	var sample_key := Vector3i(440,50,130)
+	check(game.sound.tone_cache.has(sample_key),"First tone populates the PCM cache")
+	var first_sample = game.sound.tone_cache.get(sample_key)
+	for voice in game.sound.voices: voice.stop()
+	game.sound.tone(440.0,0.05,0.13)
+	check(game.sound.tone_cache.get(sample_key) == first_sample,"Repeated tones reuse an audio sample")
+	for voice in game.sound.voices: voice.stop()
+	game.sound.enabled = false
+	game.profile.data.eco_mode = true; game.sparks.clear()
+	var gameplay_rng_state := game.rng.state
+	game.emit_sparks(Vector2(500,400),game.TEAL,300)
+	check(game.rng.state == gameplay_rng_state,"Cosmetic emission does not consume combat RNG")
+	check(game.sparks.size() == 80,"Eco mode respects its eighty-particle VFX budget")
+	game.sparks.clear(); game.profile.data.eco_mode = false
+	game.emit_sparks(Vector2(500,400),game.TEAL,300)
+	check(game.sparks.size() == 300,"Full effects mode preserves the original particle budget")
+	prepare(2)
+	game.profile.data.eco_mode = true
+	var time_before := game.elapsed
+	game._process(1.0/30.0)
+	check(is_equal_approx(game.elapsed-time_before,2.0/60.0),"Eco visual refresh still advances two fixed simulation ticks")
+	check(game.profile.data.eco_mode,"Low power preference is not overridden by simulation")
+	game.sparks.clear()
+	game.profile.data.eco_mode = true
+	game.command("eco_mode")
+	check(not game.profile.data.eco_mode,"Eco renderer setting toggles without changing difficulty")
+	game.profile.data.eco_mode = false
+
 	check(game.Characters.ROSTER.map(func(c): return c.title) == ["The Drummer","The Bassist","The Guitarist","The Singer"],"Four distinct playable musician types")
 	var sprite_art = game.StageArt.PixelPerformers
 	check(sprite_art.ATLAS != null and sprite_art.ATLAS.get_size() == Vector2(1440,224),"Pixel atlas imports at 36 poses by 4 characters")
