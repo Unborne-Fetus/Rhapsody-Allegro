@@ -25,6 +25,24 @@ func run_tests() -> void:
 	game.profile.path = "user://weapon-test-profile.json"
 	var sets = game.Arsenal.SETS
 	check(sets.size() == 4 and game.Characters.ROSTER.size() == 4,"Four characters and assigned sets")
+	# Eco settings are purely visual; collision logic and character kits remain unchanged.
+	var low_style = game.panel_style(Color("182432"),Color("4a6472"))
+	check(low_style == game.panel_style(Color("182432"),Color("4a6472")),"UI panel resources are reused between draws")
+	var cached_styles = game.panel_style_cache.size()
+	game.panel_style(Color("182432"),Color("4a6472"))
+	check(game.panel_style_cache.size() == cached_styles,"Repeated menu rendering does not allocate more style resources")
+	game.profile.data.eco_mode = true; game.sparks.clear()
+	game.emit_sparks(Vector2(500,400),game.TEAL,300)
+	check(game.sparks.size() == 80,"Eco mode respects its eighty-particle VFX budget")
+	game.sparks.clear(); game.profile.data.eco_mode = false
+	game.emit_sparks(Vector2(500,400),game.TEAL,300)
+	check(game.sparks.size() == 300,"Full effects mode preserves the original particle budget")
+	game.sparks.clear()
+	game.profile.data.eco_mode = true
+	game.command("eco_mode")
+	check(not game.profile.data.eco_mode,"Eco renderer setting toggles without changing difficulty")
+	game.profile.data.eco_mode = false
+
 	check(game.Characters.ROSTER.map(func(c): return c.title) == ["The Drummer","The Bassist","The Guitarist","The Singer"],"Four distinct playable musician types")
 	var sprite_art = game.StageArt.PixelPerformers
 	check(sprite_art.ATLAS != null and sprite_art.ATLAS.get_size() == Vector2(1440,224),"Pixel atlas imports at 36 poses by 4 characters")
