@@ -785,7 +785,7 @@ func change_perspective(to_side: bool) -> void:
 	shots.clear(); hazards.clear()
 	melee_snapshot.clear(); melee_windup = 0; melee_flash = 0
 	ground_grace = 0; jump_buffer = 0
-	windup = 0; charge_time = 0; followup_delay = 0; followup_pattern = ""; attack_timer = 2.5
+	windup = 0; charge_time = 0; boss_attack_recoil = 0; followup_delay = 0; followup_pattern = ""; attack_timer = 2.5
 	player = Vector2(clampf(player.x,170,600),560 if side else 440)
 	boss = Vector2(950,515 if side else 350)
 	velocity = Vector2.ZERO
@@ -1322,7 +1322,7 @@ func add_stagger(amount: float) -> void:
 	stagger = minf(100,stagger+amount*run.stat("impact"))
 	if stagger>=100:
 		stagger = 0; stagger_time = 1.25; stagger_lock = 7.0
-		windup = 0; charge_time = 0; followup_delay = 0; followup_pattern = ""; attack_timer = 1.1
+		windup = 0; charge_time = 0; boss_attack_recoil = 0; followup_delay = 0; followup_pattern = ""; attack_timer = 1.1
 		banner = "STAGGER  /  DAMAGE +30%"; banner_time = 1.1
 		emit_sparks(boss,GOLD,30)
 		sound.tone(180,0.25)
