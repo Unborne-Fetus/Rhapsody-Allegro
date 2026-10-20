@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $portable = Join-Path $root 'tools\.portable-godot'
-$release = 'https://github.com/godotengine/godot/releases/download/4.5.1-stable'
+$release = 'https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable'
 $editorName = 'Godot_v4.5.1-stable_win64_console.exe'
 $archiveName = 'Godot_v4.5.1-stable_win64.exe.zip'
 $editor = Join-Path $portable $editorName
@@ -18,31 +18,94 @@ function Log([string]$Message) {
     Write-Host "[Rhapsody] $Message" -ForegroundColor Cyan
 }
 
-function Fetch([string]$Url, [string]$Destination) {
+# Pinned to the official Godot 4.5.1-stable GitHub release assets.
+$editorBytes = [long]76685794
+$editorSha256 = 'DEFCCC78669E644861B4247626B01AE362CD9F23975EDF19C8BFD2EB1F6A1783'
+$templateBytes = [long]1355592535
+$templateSha256 = '1998AF37F1387684E2C211CDB483DAF492FC64DC6B12096BDDCDCA25B6910C86'
+
+function FetchVerified([string]$Url, [string]$Destination,
+                       [long]$ExpectedBytes, [string]$ExpectedSha256) {
     $parent = Split-Path -Parent $Destination
-    if (-not (Test-Path $parent)) {
+    if (-not (Test-Path -LiteralPath $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
-    if (Test-Path $Destination) { return }
-    Log "Downloading $([System.IO.Path]::GetFileName($Destination)) (first run only)..."
-    try {
-        Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -TimeoutSec 900
+    for ($attempt = 1; $attempt -le 4; $attempt++) {
+        $existingBytes = [long]0
+        if (Test-Path -LiteralPath $Destination) {
+            $existingBytes = (Get-Item -LiteralPath $Destination).Length
+            if ($existingBytes -eq $ExpectedBytes) {
+                Log "Checking SHA256 of $([IO.Path]::GetFileName($Destination))..."
+                $sha256 = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
+                if ($sha256 -ieq $ExpectedSha256) {
+                    Log 'Archive size and checksum verified.'
+                    return
+                }
+                Write-Warning 'Cached file has a bad checksum. Deleting it.'
+                Remove-Item -LiteralPath $Destination -Force
+                $existingBytes = 0
+            } elseif ($existingBytes -gt $ExpectedBytes) {
+                Write-Warning 'Cached file is larger than the official release. Deleting it.'
+                Remove-Item -LiteralPath $Destination -Force
+                $existingBytes = 0
+            }
+        }
+        Log ("Download attempt {0}/4: {1:N1} of {2:N1} MiB already received." -f $attempt, ($existingBytes / 1048576), ($ExpectedBytes / 1048576))
+        $curl = Get-Command 'curl.exe' -ErrorAction SilentlyContinue
+        if ($null -ne $curl) {
+            # Resume large interrupted downloads instead of treating any existing
+            # file as complete. curl.exe ships with Windows 10/11.
+            $curlArgs = @('--fail', '--location', '--retry', '3',
+                          '--retry-delay', '4', '--connect-timeout', '30',
+                          '--progress-bar', '--show-error', '--output', $Destination)
+            if ($existingBytes -gt 0) { $curlArgs += @('--continue-at', '-') }
+            $curlArgs += @($Url)
+            & $curl.Source @curlArgs
+            $downloadExit = $LASTEXITCODE
+        } else {
+            if (Test-Path -LiteralPath $Destination) {
+                Remove-Item -LiteralPath $Destination -Force
+            }
+            try {
+                Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -TimeoutSec 1800
+                $downloadExit = 0
+            } catch {
+                Write-Warning "Download was interrupted: $($_.Exception.Message)"
+                $downloadExit = 1
+            }
+        }
+        $receivedBytes = [long]0
+        if (Test-Path -LiteralPath $Destination) {
+            $receivedBytes = (Get-Item -LiteralPath $Destination).Length
+        }
+        if ($downloadExit -eq 0 -and $receivedBytes -eq $ExpectedBytes) {
+            $sha256 = (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash
+            if ($sha256 -ieq $ExpectedSha256) {
+                Log 'Archive size and SHA256 verified.'
+                return
+            }
+            Write-Warning 'Downloaded file failed checksum verification. Retrying cleanly.'
+            Remove-Item -LiteralPath $Destination -Force
+        } else {
+            Write-Warning ("Incomplete download: {0:N1} / {1:N1} MiB, exit code {2}." -f ($receivedBytes / 1048576), ($ExpectedBytes / 1048576), $downloadExit)
+            if ($receivedBytes -gt $ExpectedBytes -or $receivedBytes -lt 1024 -or $downloadExit -eq 33) {
+                # Tiny files may be error pages; exit 33 means HTTP resume unsupported.
+                Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+            }
+        }
     }
-    catch {
-        Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
-        throw "Could not download $Url : $($_.Exception.Message)"
-    }
-}
-
-function CheckSha256([string]$File, [string]$Expected) {
-    $actual = (Get-FileHash -Algorithm SHA256 -Path $File).Hash
-    if ($actual -ne $Expected) {
-        Remove-Item -LiteralPath $File -Force -ErrorAction SilentlyContinue
-        throw "Integrity check failed for $File. Please retry."
-    }
+    throw "Could not download and verify the official Godot archive after four attempts. The partial file can be resumed on your next build: $Destination"
 }
 
 function EnsureEditor {
+    # Exclude tool archives even when using an editor supplied via GODOT.
+    if (-not (Test-Path $portable)) {
+        New-Item -ItemType Directory -Path $portable -Force | Out-Null
+    }
+    $ignoreFile = Join-Path $portable '.gdignore'
+    if (-not (Test-Path -LiteralPath $ignoreFile)) {
+        [IO.File]::WriteAllText($ignoreFile, '')
+    }
     if ($env:GODOT) {
         if (-not (Test-Path $env:GODOT)) { throw "GODOT points to a missing file: $env:GODOT" }
         $script:editor = (Resolve-Path $env:GODOT).Path
@@ -50,13 +113,8 @@ function EnsureEditor {
         return
     }
     if (Test-Path $editor) { return }
-    if (-not (Test-Path $portable)) {
-        New-Item -ItemType Directory -Path $portable -Force | Out-Null
-    }
     $archive = Join-Path $portable $archiveName
-    Fetch "$release/$archiveName" $archive
-    # Official Godot 4.5.1 Windows x64 archive, from Microsoft's winget manifest.
-    CheckSha256 $archive 'DEFCCC78669E644861B4247626B01AE362CD9F23975EDF19C8BFD2EB1F6A1783'
+    FetchVerified "$release/$archiveName" $archive $editorBytes $editorSha256
     Log 'Extracting portable Godot editor...'
     Expand-Archive -LiteralPath $archive -DestinationPath $portable -Force
     if (-not (Test-Path $editor)) {
@@ -67,43 +125,74 @@ function EnsureEditor {
 
 function EnsureTemplates {
     $templateDir = Join-Path $env:APPDATA 'Godot\export_templates\4.5.1.stable'
-    $required = @('web_release.zip', 'windows_release_x86_64.exe')
-    $missing = @($required | Where-Object { -not (Test-Path (Join-Path $templateDir $_)) })
-    if ($missing.Count -eq 0) { return }
-    Log 'Export templates are required for making standalone builds.'
-    Log 'The official template archive is large; this is a one-time download.'
-    if (-not (Test-Path $templateDir)) {
+    # Unthreaded Web exports require web_nothreads_release.zip.
+    $required = @('version.txt', 'web_release.zip', 'web_nothreads_release.zip',
+                  'windows_release_x86_64.exe')
+    $selected = @('version.txt', 'web_release.zip', 'web_debug.zip',
+                  'web_nothreads_release.zip', 'web_nothreads_debug.zip',
+                  'windows_release_x86_64.exe', 'windows_debug_x86_64.exe',
+                  'windows_release_x86_64_console.exe',
+                  'windows_debug_x86_64_console.exe')
+    $missing = @($required | Where-Object {
+        $candidate = Join-Path $templateDir $_
+        -not (Test-Path -LiteralPath $candidate) -or
+            (Get-Item -LiteralPath $candidate).Length -eq 0
+    })
+    if ($missing.Count -eq 0) {
+        Log 'Windows and Web release export templates are already installed.'
+        return
+    }
+    Log 'Installing official Godot 4.5.1 export templates (1.26 GiB one-time download).'
+    Log 'Incomplete downloads are resumed; invalid files are discarded automatically.'
+    if (-not (Test-Path -LiteralPath $templateDir)) {
         New-Item -ItemType Directory -Path $templateDir -Force | Out-Null
     }
     $templateArchive = Join-Path $portable 'Godot_v4.5.1-stable_export_templates.tpz'
-    Fetch "$release/Godot_v4.5.1-stable_export_templates.tpz" $templateArchive
+    FetchVerified "$release/Godot_v4.5.1-stable_export_templates.tpz" $templateArchive $templateBytes $templateSha256
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($templateArchive)
-    $extracted = @{}
+    $stage = Join-Path $portable 'templates-stage'
+    if (Test-Path -LiteralPath $stage) {
+        Remove-Item -LiteralPath $stage -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $stage -Force | Out-Null
+    $zip = $null
     try {
+        Log 'Extracting Windows and Web templates into a temporary staging folder...'
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($templateArchive)
         foreach ($entry in $zip.Entries) {
-            $name = $entry.FullName.Replace('\', '/')
-            if ($name -notlike 'templates/*') { continue }
-            $fileName = [System.IO.Path]::GetFileName($name)
-            if ($fileName -notin @('web_release.zip', 'web_debug.zip',
-                                  'windows_release_x86_64.exe', 'windows_debug_x86_64.exe')) {
-                continue
+            $entryName = $entry.FullName.Replace('\', '/')
+            if (-not $entryName.StartsWith('templates/')) { continue }
+            $fileName = [IO.Path]::GetFileName($entryName)
+            if ($fileName -notin $selected) { continue }
+            $destination = Join-Path $stage $fileName
+            # Two-argument overload is compatible with Windows PowerShell 5.1.
+            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destination)
+        }
+        foreach ($name in $required) {
+            $candidate = Join-Path $stage $name
+            if (-not (Test-Path -LiteralPath $candidate) -or
+                    (Get-Item -LiteralPath $candidate).Length -eq 0) {
+                throw "Archive lacks required $name. Confirm Godot version is 4.5.1."
             }
-            $destination = Join-Path $templateDir $fileName
-            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destination, $true)
-            $extracted[$fileName] = $true
+        }
+        foreach ($name in $selected) {
+            $source = Join-Path $stage $name
+            if (Test-Path -LiteralPath $source) {
+                Move-Item -LiteralPath $source -Destination (Join-Path $templateDir $name) -Force
+            }
         }
     }
-    finally {
-        $zip.Dispose()
+    catch {
+        throw "Export-template extraction failed: $($_.Exception.Message)"
     }
-    foreach ($name in $required) {
-        if (-not (Test-Path (Join-Path $templateDir $name))) {
-            throw "The template archive did not include $name. Check the downloaded Godot version."
+    finally {
+        if ($null -ne $zip) { $zip.Dispose() }
+        if (Test-Path -LiteralPath $stage) {
+            Remove-Item -LiteralPath $stage -Recurse -Force
         }
     }
     Remove-Item -LiteralPath $templateArchive -Force -ErrorAction SilentlyContinue
-    Log "Installed the Windows and Web export templates only ($($extracted.Count) files)."
+    Log 'Godot Web (including non-threaded) and Windows templates are installed.'
 }
 
 function RunGodot([string]$Description, [string[]]$Arguments) {
