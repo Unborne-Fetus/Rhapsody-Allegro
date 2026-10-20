@@ -2,6 +2,12 @@ name: Build and Test Rhapsody
 on:
   push:
     branches: [main]
+    # Publishing prebuilt Godot assets in docs/play should not consume Actions
+    # minutes or trigger the separate CI build. GitHub Pages deploys main/docs.
+    paths-ignore:
+      - 'docs/play/**'
+      - 'docs/index.html'
+      - 'docs/.nojekyll'
   pull_request:
   workflow_dispatch:
 permissions:
@@ -78,21 +84,3 @@ jobs:
           name: Browser-screenshots
           path: build/screenshots/
           if-no-files-found: ignore
-      - uses: actions/upload-pages-artifact@v3
-        if: github.ref == 'refs/heads/main' && vars.ENABLE_GITHUB_PAGES == 'true'
-        with:
-          path: dist/
-  pages:
-    if: github.ref == 'refs/heads/main' && vars.ENABLE_GITHUB_PAGES == 'true'
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy browser game
-        id: deployment
-        uses: actions/deploy-pages@v4
