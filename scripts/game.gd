@@ -1343,7 +1343,8 @@ func update_hazards(delta: float) -> void:
 	if hazards.size()>24: hazards.resize(24)
 
 func touch_layout() -> Array:
-	var layout = [[Vector2(1080,555),"melee","BLADE"],[Vector2(1180,460),"shoot","ABILITY"],[Vector2(965,630),"dodge","DODGE"],[Vector2(1180,630),"parry","PARRY"],[Vector2(1080,370),"burst","BURST"],[Vector2(860,555),"jump","JUMP"]]
+	var layout = [[Vector2(1080,555),"melee","STRIKE"],[Vector2(1180,460),"shoot","ABILITY"],[Vector2(965,630),"dodge","DODGE"],[Vector2(1080,370),"burst","BREAK"],[Vector2(860,555),"jump","JUMP"]]
+	if parry_enabled: layout.append([Vector2(1180,630),"parry","PARRY"])
 	if training:
 		layout.append([Vector2(600,215),"attacks","ATK"])
 		layout.append([Vector2(700,215),"view","VIEW"])
