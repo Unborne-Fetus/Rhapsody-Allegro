@@ -52,6 +52,15 @@ var music_index := -1
 var music_phase := 0
 var music_enabled := true
 var streams: Dictionary = {}
+
+func restart_music() -> void:
+	# A retry/new encounter should start at bar one. Menu panels instead use
+	# stream_paused and preserve the current position.
+	if is_instance_valid(music): music.stop()
+	if is_instance_valid(intensity): intensity.stop()
+	music_index = -1
+	music_phase = 0
+
 func setup_music() -> void:
 	music = AudioStreamPlayer.new(); intensity = AudioStreamPlayer.new()
 	add_child(music); add_child(intensity)
