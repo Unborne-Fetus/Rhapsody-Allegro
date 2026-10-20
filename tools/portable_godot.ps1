@@ -120,43 +120,74 @@ function EnsureEditor {
 
 function EnsureTemplates {
     $templateDir = Join-Path $env:APPDATA 'Godot\export_templates\4.5.1.stable'
-    $required = @('web_release.zip', 'windows_release_x86_64.exe')
-    $missing = @($required | Where-Object { -not (Test-Path (Join-Path $templateDir $_)) })
-    if ($missing.Count -eq 0) { return }
-    Log 'Export templates are required for making standalone builds.'
-    Log 'The official template archive is large; this is a one-time download.'
-    if (-not (Test-Path $templateDir)) {
+    # Unthreaded Web exports require web_nothreads_release.zip.
+    $required = @('version.txt', 'web_release.zip', 'web_nothreads_release.zip',
+                  'windows_release_x86_64.exe')
+    $selected = @('version.txt', 'web_release.zip', 'web_debug.zip',
+                  'web_nothreads_release.zip', 'web_nothreads_debug.zip',
+                  'windows_release_x86_64.exe', 'windows_debug_x86_64.exe',
+                  'windows_release_x86_64_console.exe',
+                  'windows_debug_x86_64_console.exe')
+    $missing = @($required | Where-Object {
+        $candidate = Join-Path $templateDir $_
+        -not (Test-Path -LiteralPath $candidate) -or
+            (Get-Item -LiteralPath $candidate).Length -eq 0
+    })
+    if ($missing.Count -eq 0) {
+        Log 'Windows and Web release export templates are already installed.'
+        return
+    }
+    Log 'Installing official Godot 4.5.1 export templates (1.26 GiB one-time download).'
+    Log 'Incomplete downloads are resumed; invalid files are discarded automatically.'
+    if (-not (Test-Path -LiteralPath $templateDir)) {
         New-Item -ItemType Directory -Path $templateDir -Force | Out-Null
     }
     $templateArchive = Join-Path $portable 'Godot_v4.5.1-stable_export_templates.tpz'
-    Fetch "$release/Godot_v4.5.1-stable_export_templates.tpz" $templateArchive
+    FetchVerified "$release/Godot_v4.5.1-stable_export_templates.tpz" $templateArchive $templateBytes $templateSha256
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($templateArchive)
-    $extracted = @{}
+    $stage = Join-Path $portable 'templates-stage'
+    if (Test-Path -LiteralPath $stage) {
+        Remove-Item -LiteralPath $stage -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $stage -Force | Out-Null
+    $zip = $null
     try {
+        Log 'Extracting Windows and Web templates into a temporary staging folder...'
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($templateArchive)
         foreach ($entry in $zip.Entries) {
-            $name = $entry.FullName.Replace('\', '/')
-            if ($name -notlike 'templates/*') { continue }
-            $fileName = [System.IO.Path]::GetFileName($name)
-            if ($fileName -notin @('web_release.zip', 'web_debug.zip',
-                                  'windows_release_x86_64.exe', 'windows_debug_x86_64.exe')) {
-                continue
+            $entryName = $entry.FullName.Replace('\', '/')
+            if (-not $entryName.StartsWith('templates/')) { continue }
+            $fileName = [IO.Path]::GetFileName($entryName)
+            if ($fileName -notin $selected) { continue }
+            $destination = Join-Path $stage $fileName
+            # Two-argument overload is compatible with Windows PowerShell 5.1.
+            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destination)
+        }
+        foreach ($name in $required) {
+            $candidate = Join-Path $stage $name
+            if (-not (Test-Path -LiteralPath $candidate) -or
+                    (Get-Item -LiteralPath $candidate).Length -eq 0) {
+                throw "Archive lacks required $name. Confirm Godot version is 4.5.1."
             }
-            $destination = Join-Path $templateDir $fileName
-            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destination, $true)
-            $extracted[$fileName] = $true
+        }
+        foreach ($name in $selected) {
+            $source = Join-Path $stage $name
+            if (Test-Path -LiteralPath $source) {
+                Move-Item -LiteralPath $source -Destination (Join-Path $templateDir $name) -Force
+            }
         }
     }
-    finally {
-        $zip.Dispose()
+    catch {
+        throw "Export-template extraction failed: $($_.Exception.Message)"
     }
-    foreach ($name in $required) {
-        if (-not (Test-Path (Join-Path $templateDir $name))) {
-            throw "The template archive did not include $name. Check the downloaded Godot version."
+    finally {
+        if ($null -ne $zip) { $zip.Dispose() }
+        if (Test-Path -LiteralPath $stage) {
+            Remove-Item -LiteralPath $stage -Recurse -Force
         }
     }
     Remove-Item -LiteralPath $templateArchive -Force -ErrorAction SilentlyContinue
-    Log "Installed the Windows and Web export templates only ($($extracted.Count) files)."
+    Log 'Godot Web (including non-threaded) and Windows templates are installed.'
 }
 
 function RunGodot([string]$Description, [string[]]$Arguments) {
