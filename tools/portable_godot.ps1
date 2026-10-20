@@ -279,18 +279,19 @@ function ExportBuilds {
     if ($SkipTests) {
         Write-Warning 'FAST build: boot verified, extended regression tests intentionally skipped.'
     } else {
-        $tests = @(
-            @('combat_test', 'COMBAT_TESTS'),
-            @('advanced_test', 'ADVANCED_TESTS'),
-            @('input_test', 'INPUT_TESTS'),
-            @('weapon_test', 'CHARACTER_TUTORIAL_TESTS'),
-            @('song_boss_test', 'SONG_BOSS_TESTS'),
-            @('phone_test', 'PHONE_TESTS'),
-            @('stage_test', 'STAGE_TESTS')
-        )
-        foreach ($test in $tests) {
-            $name = [string]$test[0]
-            $label = [string]$test[1]
+        $tests = @('combat_test', 'advanced_test', 'input_test',
+                   'weapon_test', 'song_boss_test', 'phone_test', 'stage_test')
+        $testLabels = @{
+            combat_test = 'COMBAT_TESTS'
+            advanced_test = 'ADVANCED_TESTS'
+            input_test = 'INPUT_TESTS'
+            weapon_test = 'CHARACTER_TUTORIAL_TESTS'
+            song_boss_test = 'SONG_BOSS_TESTS'
+            phone_test = 'PHONE_TESTS'
+            stage_test = 'STAGE_TESTS'
+        }
+        foreach ($name in $tests) {
+            $label = $testLabels[$name]
             RunGodot "Testing $name" @('--headless', '--path', $root, '--script', "res://tests/$name.gd")
             $testLog = Get-Content -LiteralPath (Join-Path $build 'last-godot-output.txt') -Raw
             # Some GDScript failures terminate a test without setting a
