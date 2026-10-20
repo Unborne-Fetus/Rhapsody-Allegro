@@ -108,6 +108,11 @@ function EnsureEditor {
     if (-not (Test-Path $portable)) {
         New-Item -ItemType Directory -Path $portable -Force | Out-Null
     }
+    # Prevent the editor from scanning or exporting a second Godot executable.
+    $ignoreFile = Join-Path $portable '.gdignore'
+    if (-not (Test-Path -LiteralPath $ignoreFile)) {
+        [IO.File]::WriteAllText($ignoreFile, '')
+    }
     $archive = Join-Path $portable $archiveName
     FetchVerified "$release/$archiveName" $archive $editorBytes $editorSha256
     Log 'Extracting portable Godot editor...'
