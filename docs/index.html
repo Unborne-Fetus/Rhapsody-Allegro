@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f18">
+<title>Rhapsody: Allegro — Play</title>
+<style>
+:root { color-scheme: dark; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+* { box-sizing: border-box; }
+html,body { margin:0; min-height:100%; background:#090f19; color:#f2ebda; }
+body { min-height:100dvh; display:grid; place-items:center; overflow-x:hidden; }
+body:before { content:""; position:fixed; inset:0; z-index:-1;
+background:repeating-linear-gradient(112deg,transparent 0,transparent 70px,#18333a32 71px,transparent 73px),
+radial-gradient(ellipse at 75% 15%,#20404e 0,transparent 42%),radial-gradient(ellipse at 15% 85%,#442b45 0,transparent 42%);}
+main { width:min(710px,calc(100% - 36px)); padding:clamp(22px,5vw,55px);
+ border:1px solid #466270; border-radius:13px; background:#111b28e8; box-shadow:0 30px 100px #0009; }
+.kicker { color:#70e2d0; font-size:13px; letter-spacing:.32em; font-weight:800; }
+h1 { margin:24px 0 0; font-size:clamp(44px,11vw,88px); font-weight:900; line-height:.97; letter-spacing:-.04em; }
+h1 strong { color:#ff9776; font-weight:900; }
+.tagline { color:#a4b6c4; font-size:clamp(16px,3vw,20px); max-width:530px; line-height:1.6; }
+.music { display:flex; gap:9px; padding:24px 0; flex-wrap:wrap; }
+.music span { font-size:13px; border:1px solid #344653; border-radius:20px; padding:7px 13px; color:#cbd8e0; }
+a.play { display:inline-block; min-width:230px; padding:15px 28px; text-align:center;
+ border-radius:6px; text-transform:uppercase; text-decoration:none;
+ color:#09151c; background:#70e2d0; font-weight:900; letter-spacing:.11em;
+ box-shadow:0 4px 0 #409989; }
+a.play:hover { background:#99fbea; }
+a.play[aria-disabled="true"] { pointer-events:none; filter:grayscale(1); opacity:.55; box-shadow:none; }
+#status { font-size:14px; margin:23px 0 0; color:#a4b6c4; line-height:1.6; }
+footer { border-top:1px solid #344653; padding-top:18px; margin-top:28px;
+ display:flex; gap:14px; justify-content:space-between; flex-wrap:wrap; color:#748f9d; font-size:12px; }
+footer a { color:#85dbc9; }
+@media (prefers-reduced-motion:no-preference) { h1 strong { text-shadow:0 0 25px #ff977626; } }
+</style>
+</head>
+<body>
+<main>
+<div class="kicker">R / A &nbsp;·&nbsp; THE LIVING SCORE</div>
+<h1>RHAPSODY<br><strong>ALLEGRO</strong></h1>
+<p class="tagline">A music-driven action game where every boss is a new movement—and the stage can change from top-down combat to side-scrolling action.</p>
+<div class="music"><span>Drummer</span><span>Bassist</span><span>Guitarist</span><span>Singer</span><span>12 boss movements</span></div>
+<a id="play" class="play" href="./play/" aria-disabled="true" tabindex="-1">Preparing the stage</a>
+<p id="status" role="status" aria-live="polite">Checking whether the latest playable browser export is published…</p>
+<footer>
+<span>Keyboard · Controller · Two-thumb mobile controls</span>
+<a href="https://github.com/Unborne-Fetus/Rhapsody-Allegro">Project on GitHub</a>
+</footer>
+</main>
+<script>
+(async () => {
+ const play = document.getElementById('play');
+ const status = document.getElementById('status');
+ try {
+   const response = await fetch('./play/index.html', { method:'HEAD', cache:'no-store' });
+   if (!response.ok) throw new Error('Not published');
+   play.textContent = 'Play in browser';
+   play.removeAttribute('aria-disabled');
+   play.removeAttribute('tabindex');
+   status.textContent = 'The stage is ready. Opening the game…';
+   // Directly load the real Godot export (not an iframe) to preserve touch
+   // positions, fullscreen handling and landscape/portrait transitions.
+   setTimeout(() => location.replace('./play/' + location.search + location.hash), 900);
+ } catch {
+   play.textContent = 'Web export pending';
+   status.textContent = 'The website is configured. The first Godot Web export still needs to be built and pushed to main/docs/play with PUBLISH-PAGES.bat. Until then this is a landing page, not a playable build.';
+ }
+})();
+</script>
+</body>
+</html>
