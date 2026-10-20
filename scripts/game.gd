@@ -341,6 +341,8 @@ func command(action: String) -> void:
 				start_fight(int(action.trim_prefix("boss_")))
 
 func start_fight(index: int) -> void:
+	# Retry and new encounters begin the score at its opening measure.
+	if is_instance_valid(sound): sound.restart_music()
 	songs = SongBosses.new()
 	menu_history.clear()
 	mouse_attack_latched = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
