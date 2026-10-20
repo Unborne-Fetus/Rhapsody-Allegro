@@ -1,6 +1,6 @@
 # Rhapsody: Allegro
 
-A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.2 — Potato Mode.** Twelve bosses retain their painted artwork, while the four playable musicians now have original pixel-art animation atlases with individually keyed walking, idle, jumping, attack and hurt poses. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
+A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.3 — Pixel Stage.** All four playable musicians and all twelve bosses now have distinct, transparent retro pixel-art sprites, rather than painted cutouts. The musician classes have four original poses each; every boss has six distinct poses for idle, movement, windups and damage. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
 
 **[Previous browser testing link](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — may not contain the current repository changes. A new verified Web build requires a successful export; use `build.bat` and `PLAY-WEB.bat` for a local build in the meantime.
 
@@ -53,7 +53,7 @@ Each has three named phases, its own arena and silhouette, movement behavior, te
 | Aria / Riff (Guitarist) | Wide power-chord sweep | Finishers restore 8 extra energy | Normal strikes build 20% less stagger |
 | Lyra / Voice (Singer) | Long-range sound-wave projectile | +25% damage beyond 400 units | 75 HP; +20% incoming damage |
 
-Bram is a hard-hitting drummer; Vex a rapid bassist; Aria a balanced guitarist; and Lyra a ranged singer. Their existing damage, movement, energy and difficulty tuning are preserved. See [character tuning](docs/WEAPONS.md) for values. All are available immediately. Each playable musician has a separate silhouette and 36 distinct sprite poses (144 total). The 40×56-pixel cells are animated based on actual combat state, not a painted PNG moved side to side. Bosses keep their existing painted atlas and original synthesized effects.
+Bram is a hard-hitting drummer; Vex a rapid bassist; Aria a balanced guitarist; and Lyra a ranged singer. Their existing damage, movement, energy and difficulty tuning are preserved. See [character tuning](docs/WEAPONS.md) for values. All are available immediately. Each musician has four independent illustrated poses (16 unique frames total), mapped to combat idle, walk, jump, attack and hurt states. The boss gallery and combat use a separate 72-frame pixel-art atlas (six distinct poses for each of twelve bosses). Sprites are transparent, nearest-neighbor filtered and lightweight for the browser/phone build.
 
 ## Controls
 
@@ -115,7 +115,7 @@ GitHub Actions builds Web and Windows artifacts and runs the browser smoke test.
 
 ## Source
 
-`scripts/game.gd` owns encounter flow and interface. `assets/musicians.svg` contains crisp pixel-art pose cells; `scripts/pixel_performers.gd` selects frames and `scripts/stage_art.gd` continues to draw painted bosses. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `phone_ui.gd` draws the thumb interface; phone routing and camera integration use the shared game simulation. `song_bosses.gd` owns the custom encounter mechanics, attacks and vector figures; `encounters.gd` provides shared roster bounds. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
+`scripts/game.gd` owns encounter flow and interface. `assets/musician-band.png` contains 16 character poses; `assets/bosses-pixel.png` contains 72 boss poses; `scripts/pixel_performers.gd` and `scripts/stage_art.gd` select the appropriate image cells in character menus, boss galleries and live combat. `characters.gd`, `weapons.gd`, `tutorial.gd` and `mechanics.gd` define the kits, objectives and contextual reference data. `phone_ui.gd` draws the thumb interface; phone routing and camera integration use the shared game simulation. `song_bosses.gd` owns the custom encounter mechanics, attacks and vector figures; `encounters.gd` provides shared roster bounds. `run_state.gd` handles upgrades / checkpoints; `profile.gd` handles local persistence. Projectile and hazard simulation are separate, with clipped hazard rendering. Boss data lives in `data/bosses.json`.
 
 See [foundation notes](docs/FOUNDATION.md). No third-party art or recordings are bundled. Godot's engine and default font retain upstream licenses. No license for original game source has been granted yet.
 

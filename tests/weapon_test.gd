@@ -63,7 +63,15 @@ func run_tests() -> void:
 
 	check(game.Characters.ROSTER.map(func(c): return c.title) == ["The Drummer","The Bassist","The Guitarist","The Singer"],"Four distinct playable musician types")
 	var sprite_art = game.StageArt.PixelPerformers
-	check(sprite_art.ATLAS != null and sprite_art.ATLAS.get_size() == Vector2(1440,224),"Pixel atlas imports at 36 poses by 4 characters")
+	check(sprite_art.ATLAS != null and sprite_art.ATLAS.get_size() == Vector2(320,320),"Four redesigned musicians each have four transparent pose frames")
+	check(game.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST,"Character and boss atlas sampling stays crisp with nearest-neighbor filtering")
+	check(sprite_art.pose_for(16) == 0 and sprite_art.pose_for(17) == 1,"Character idle/performance frames alternate")
+	check(sprite_art.pose_for(20) == 2 and sprite_art.pose_for(21) == 3,"Character walking actually changes its legs")
+	check(sprite_art.pose_for(30) != sprite_art.pose_for(31),"Character attack frames use different illustrated poses")
+	for i in 4:
+		for frame in 36:
+			var pose = sprite_art.pose_for(frame)
+			check(pose>=0 and pose<4,"Every combat state maps onto a valid musician pose")
 	check(sprite_art.frame_for(game,true)>=16 and sprite_art.frame_for(game,true)<=19,"Animated musician portrait")
 	game.side = true; game.velocity = Vector2(210,0); game.ground_grace = 0.1
 	check(sprite_art.frame_for(game)>=20 and sprite_art.frame_for(game)<=25,"Running selects a real frame")
