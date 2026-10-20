@@ -31,6 +31,13 @@ jobs:
       # if tests fail, but diagnostic artifacts remain downloadable.
       - name: Import project
         run: godot --headless --editor --import --quit
+      - name: Verify real game boot and compiled dependencies
+        run: |
+          mkdir -p build
+          touch build/.gdignore
+          rm -f build/preflight-ok.txt
+          godot --headless --script res://tests/build_preflight.gd
+          test "$(cat build/preflight-ok.txt)" = "RHAPSODY_PREFLIGHT_OK"
       - name: Export playable Web and Windows
         run: |
           mkdir -p build/web build/windows
