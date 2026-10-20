@@ -8,9 +8,12 @@ func _initialize() -> void: call_deferred("run_tests")
 func run_tests() -> void:
 	var game = load("res://scenes/main.tscn").instantiate(); root.add_child(game)
 	game.set_process(false); game.sound.enabled = false; game.profile.path = "user://stage-tests.json"
-	for index in 16:
-		var region = game.StageArt.region(index)
-		check(Rect2(Vector2.ZERO,Vector2(game.StageArt.ATLAS.get_size())).encloses(region),"Painted atlas cell remains inside texture")
+	check(game.StageArt.ATLAS != null and game.StageArt.ATLAS.get_size() == Vector2(768,528),"Twelve boss columns and six pixel animation rows import correctly")
+	for index in 12:
+		for pose in 6:
+			var region = game.StageArt.region(index)
+			region.position.y = pose*game.StageArt.CELL.y
+			check(Rect2(Vector2.ZERO,Vector2(game.StageArt.ATLAS.get_size())).encloses(region),"Every boss idle, movement, attack, and hurt frame is inside the atlas")
 	for character in game.Characters.ROSTER:
 		check(not character.music.is_empty(),"Every playable character has a musical role")
 	for index in 12:
