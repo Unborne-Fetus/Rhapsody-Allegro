@@ -80,6 +80,14 @@ func run_tests() -> void:
 	game.attack_animation = 0; game.hurt_animation = 0.2
 	check(sprite_art.frame_for(game)>=34,"Damage switches to recoil sprite")
 	game.hurt_animation = 0; game.side = false; game.velocity = Vector2.ZERO
+	prepare(1)
+	game.melee()
+	check(is_equal_approx(game.attack_visual_duration,game.melee_cd),"Quick bassist strikes animate for their actual cooldown")
+	check(is_equal_approx(game.attack_animation,game.attack_visual_duration),"Attack begins on its first posed frame")
+	game.attack_animation = game.attack_visual_duration*0.05
+	check(sprite_art.frame_for(game) == 33,"Rapid follow-through can reach the final attack frame")
+	game.dodge()
+	check(game.attack_animation == 0,"Cancelling into a dodge clears the old attack pose")
 	check(sets[0].melee_damage[0]>sets[2].melee_damage[0] and sets[2].melee_damage[0]>sets[1].melee_damage[0],"Heavy, balanced and fast damage roles")
 	check(sets[1].melee_cooldown[0]<sets[2].melee_cooldown[0] and sets[2].melee_cooldown[0]<sets[0].melee_cooldown[0],"Distinct attack cadence")
 	for i in 4:
