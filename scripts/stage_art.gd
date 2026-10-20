@@ -45,5 +45,5 @@ static func boss(g: Node2D,p: Vector2,index: int,size: float) -> void:
 static func player(g: Node2D,p: Vector2,index: int,alpha: float) -> void:
 	PixelPerformers.player(g,p,index,alpha)
 
-static func portrait(g: Node2D,p: Vector2,index: int) -> void:
-	PixelPerformers.portrait(g,p,index)
+static func portrait(g: Node2D,p: Vector2,index: int,scale: float = 1.0) -> void:
+	PixelPerformers.portrait(g,p,index,scale)
