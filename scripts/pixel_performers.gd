@@ -14,7 +14,7 @@ static func frame_for(g: Node2D, portrait: bool = false) -> int:
 	if g.hurt_animation > 0.0:
 		return 34 + int(g.elapsed*12.0)%2
 	if g.attack_animation > 0.0:
-		var completed := 1.0-g.attack_animation/maxf(g.attack_visual_duration,0.01)
+		var completed: float = 1.0-float(g.attack_animation)/maxf(float(g.attack_visual_duration),0.01)
 		return 30 + clampi(int(completed*4.0),0,3)
 	if g.side:
 		if g.ground_grace <= 0.0 and absf(g.velocity.y)>35.0:
