@@ -157,6 +157,8 @@ var rng := RandomNumberGenerator.new()
 var visual_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	# Draw authored pixel-art cells with crisp nearest-neighbor sampling at any screen size.
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	# Keep CPU/GPU costs bounded on high-refresh browsers and inexpensive devices.
 	Engine.max_fps = 60
 	font = ThemeDB.fallback_font
