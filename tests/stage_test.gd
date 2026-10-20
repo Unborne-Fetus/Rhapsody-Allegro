@@ -66,6 +66,10 @@ func run_tests() -> void:
 	game.sound.enabled = true
 	game.sound.sync_music(4,0,true,false,true)
 	check(game.sound.music.playing and game.sound.intensity.playing and game.sound.music_index == 4,"Boss music actually starts both synchronized players")
+	game.start_fight(4)
+	check(game.sound.music_index == -1 and not game.sound.music.playing and not game.sound.intensity.playing,"Retry discards stale score position")
+	game.sound.sync_music(4,0,true,false,true)
+	check(game.sound.music_index == 4 and game.sound.music.playing and game.sound.intensity.playing,"Retry starts both score stems afresh")
 	game.sound.sync_music(4,2,true,false,true,2)
 	check(game.sound.intensity.volume_db == -11 and game.sound.music_phase == 2,"Final phase brings in intensity arrangement")
 	game.sound.sync_music(4,2,false,true,true)
