@@ -954,10 +954,11 @@ func draw_menu() -> void:
 		button("SETTINGS",Rect2(96,592,188,44),"settings")
 		button("CHARACTERS",Rect2(298,592,188,44),"arsenal")
 		text_at("WASD MOVE  ·  K STRIKE  ·  J ABILITY  ·  SPACE DODGE",Vector2(96,681),14,MUTED)
-		# Fit the complete boss silhouette inside the title composition.
+		# Stage-circle and full boss silhouette share one center; no clipped hat.
+		draw_circle(Vector2(920,360),194,Color(CORAL,0.025))
+		draw_arc(Vector2(920,360),185,-PI*0.85,PI*0.7,64,Color("33414e"),1.5,true)
+		draw_arc(Vector2(920,360),194,-PI*0.3,PI*0.35,26,TEAL,2,true)
 		draw_boss_figure(Vector2(920,424),0,1.76,Color("ef7854"))
-		draw_arc(Vector2(920,330),185,-PI*0.85,PI*0.7,80,Color("33414e"),1.5,true)
-		draw_arc(Vector2(920,330),194,-PI*0.3,PI*0.35,30,TEAL,2,true)
 		text_at("I  /  THE METRONOME",Vector2(800,570),18,CORAL)
 		text_at("Master the pattern. Break the form.",Vector2(795,607),17,MUTED)
 	elif screen == "loadout":
@@ -987,7 +988,9 @@ func draw_menu() -> void:
 			var weapon: Dictionary = Arsenal.SETS[i]
 			var x = 64+i*292; var c = Color(weapon.color)
 			var selected = weapon_index == i
-			draw_style_box(panel_style(Color("15222c"),c if selected else Color("33414e")),Rect2(x,220,276,404))
+			draw_style_box(panel_style(Color("192a32") if selected else Color("15222c"),c if selected else Color("33414e")),Rect2(x,220,276,404))
+			if selected: draw_rect(Rect2(x,220,4,404),c)
+			line(Vector2(x+28,314),Vector2(x+248,314),Color(c,0.32),1)
 			# Portrait stays completely inside its card and away from the name.
 			draw_character_portrait(Vector2(x+138,294),i)
 			text_at(character.name,Vector2(x+18,332),26,c)
@@ -1138,7 +1141,11 @@ func draw_arena() -> void:
 		draw_circle(shot.position,shot.radius,c)
 		if not shot.friendly: draw_circle(shot.position,shot.radius*0.4,INK)
 	if boss_hp>0:
-		draw_circle(shift_position(boss,shift_from_boss)+Vector2(0,26),41,Color(0,0,0,0.3))
+		var grounded_boss := shift_position(boss,shift_from_boss)
+		# Subtle boss-specific stage light makes the sprite read against dark tiles
+		# without affecting warning shapes or the ECO particle budget.
+		draw_circle(grounded_boss+Vector2(0,26),49,Color(color,0.045))
+		draw_circle(grounded_boss+Vector2(0,26),41,Color(0,0,0,0.3))
 		draw_boss_figure(shift_position(boss,shift_from_boss),boss_index,1.0,PAPER if boss_flash>0 and profile.data.flashes else color)
 		draw_arc(shift_position(boss,shift_from_boss),59,0,TAU,48,Color(color,0.25),1,true)
 	if tutorial_active and tutorial.step == 0:
@@ -1176,7 +1183,9 @@ func draw_hud() -> void:
 	text_at("II",Vector2(1180,100),26,MUTED)
 	text_at("VITALITY  %d" % int(hp),Vector2(100,638),14,PAPER)
 	bar(Rect2(100,650,240,7),hp/run.stat("health"),CORAL)
-	text_at(Characters.ROSTER[weapon_index].name+(" / READY" if shoot_cd<=0 else " / %.1fs" % shoot_cd),Vector2(370,638),14,Color(Arsenal.SETS[weapon_index].color))
+	var ability_ready := shoot_cd<=0 and energy>=float(Characters.ROSTER[weapon_index].cost)
+	var ability_status := "READY" if ability_ready else ("ENERGY" if shoot_cd<=0 else "%.1fs" % shoot_cd)
+	text_at(Characters.ROSTER[weapon_index].name+" / "+ability_status,Vector2(370,638),14,Color(Arsenal.SETS[weapon_index].color) if ability_ready else MUTED)
 	bar(Rect2(370,650,190,7),energy/run.stat("energy"),TEAL)
 	text_at("RESONANCE"+ ("  /  E TO BREAK" if resonance>=100 else ""),Vector2(590,638),14,GOLD)
 	bar(Rect2(590,650,290,7),resonance/100,GOLD)
