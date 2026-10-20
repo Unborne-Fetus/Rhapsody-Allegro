@@ -55,13 +55,13 @@ try {
 
     Log 'Preparing a fresh copy of the built Godot browser game...'
     Copy-Item -Path (Join-Path $source '*') -Destination $stage -Recurse -Force
-    # .gdignore and _headers are build-system metadata, not needed by Pages.
-    foreach ($unneeded in @('.gdignore', '_headers')) {
-        $remove = Join-Path $stage $unneeded
-        if (Test-Path -LiteralPath $remove) {
-            Remove-Item -LiteralPath $remove -Force
-        }
+    # Remove host-specific metadata. Keep .gdignore so Godot does not
+    # recursively scan the published Web engine within its own project.
+    $headers = Join-Path $stage '_headers'
+    if (Test-Path -LiteralPath $headers) {
+        Remove-Item -LiteralPath $headers -Force
     }
+    [IO.File]::WriteAllText((Join-Path $stage '.gdignore'), '')
 
     # Stage first. Replace the previous published version only after copying
     # and verifying the new one, to avoid leaving docs/play half-populated.
