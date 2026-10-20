@@ -1,4 +1,4 @@
-# The Living Score — 0.8.3 pixel-art cast and musical bosses
+# The Living Score — 0.8.4 pixel-art cast, musical bosses and presentation polish
 
 All four playable musicians and **all twelve bosses** use low-resolution, transparent, nearest-neighbor pixel-art atlases. The boss designs follow their names, instruments and encounters: metronome automaton, glass soprano, baton conductor, velvet crooner, flaming rock king, disco parade leader, feedback guitarist, storm-singing sisters, rising stage star, regal piano empress, vinyl alchemist and soul marshal. They are original character designs inspired by music, not reproductions of real musicians' identities. The older painted sprites remain in Git history, but are no longer needed by the exported game.
 
@@ -6,15 +6,21 @@ All four playable musicians and **all twelve bosses** use low-resolution, transp
 
 `assets/musician-band.png` is a **320×320 indexed transparent PNG** cut from the polished four-character concept sheet at `80×80` cells. It has four character columns (Bram the drummer; Vex the bassist; Aria the guitarist; Lyra the singer) and four independent pose rows (neutral idle, performance idle, left step, right step). Their hairstyles, outfits, microphones and instruments are distinct and remain coherent in every frame. The editor/source concept sheet is not required at runtime.
 
-`scripts/pixel_performers.gd` keeps the existing combat-state frame selector, preserving input, attacks and jump logic, and maps the 36 engine state slots to the four **actually illustrated** poses. Do not treat those 36 states as 36 separate illustrated frames: the authored image contains **16 unique pixel-art frames total**. This distinction makes the asset count and animation coverage explicit. Mirroring supplies left/right facing; action frames follow the corresponding performance and stride poses.
+`scripts/pixel_performers.gd` keeps the existing combat-state frame selector, preserving input, attacks and jump logic, and maps the 36 engine state slots to the four **actually illustrated** poses. Do not treat those 36 states as 36 separate illustrated frames: the authored image contains **16 unique pixel-art frames total**. This distinction makes the asset count and animation coverage explicit. Mirroring supplies left/right facing; action frames follow the corresponding performance and stride poses. In version 0.8.4 the four attack-state frames advance proportionally to each musician's actual attack duration, preventing fast combos from repeatedly restarting the same pose. Gallery portraits can be scaled down with nearest-neighbor filtering so the full character fits inside each card.
 
 ## Twelve animated boss designs
 
 `assets/bosses-pixel.png` is a **768×528 transparent, indexed PNG**. Columns are the 12 bosses in `data/bosses.json` order; rows are six *separate, hand-composed* poses per boss (idle A, idle B, travel A, travel B, attack windup, hit reaction). There are **72 boss frames**. The Storm Sisters are drawn as two distinct performers in their shared sprite cell. Their weapons/props are musical: microphones, drumsticks, turntables, guitars, batons, keys and stage costumes.
 
-`scripts/stage_art.gd` draws the same boss texture in combat, practice listings, desktop title/menu screens and mobile galleries. It changes pose based on animation time, approaching attacks/charges and damage, instead of shifting a single painted cutout. All attack telegraphs and hitboxes still come from the existing combat and hazard systems; sprite art is presentation-only. Texture filtering uses `CanvasItem.TEXTURE_FILTER_NEAREST`.
+`scripts/stage_art.gd` draws the same boss texture in combat, practice listings, desktop title/menu screens and mobile galleries. It changes pose based on animation time, actual warned windups, attack release, stagger, stationary training behavior and damage, instead of shifting a single painted cutout. Opponents no longer appear to run while stationary or to miss the authored attack pose during most warnings. All attack telegraphs and hitboxes still come from the existing combat and hazard systems; sprite art is presentation-only. Texture filtering uses `CanvasItem.TEXTURE_FILTER_NEAREST`.
 
 `tools/generate_boss_pixel_art.py` can regenerate the deterministic original twelve-boss atlas using Pillow and NumPy. Running it writes the indexed PNG to `assets/bosses-pixel.png`. The default build needs no Python and loads the prebuilt PNG directly.
+
+## Two-pass user interface polish
+
+Character-select portraits use 72% scale on desktop to avoid overlapping text; the original sprites and nearest-neighbor filter are unchanged. Active selection cards have stronger edge accents. A subdued, boss-color stage light separates dark boss sprites from the arena while retaining the same attack warning overlay and ECO particle limits. The home-screen boss now fits inside the illustrated frame.
+
+The combat HUD reports whether a skill is ready or lacks energy. Phone control rings display recharging progress and dim when energy is insufficient, without replacing large thumb targets. Help text now makes the distinction between advance gold warning marks and genuinely safe escape openings unambiguous. Deferred parrying stays hidden in both touch layouts.
 
 ## Low-power drawing
 
@@ -26,7 +32,7 @@ The ECO RENDERER switch persists in the user profile. Web and mobile builds defa
 
 `tools/compose_boss_music.py` composes and renders twelve original sixteen-bar stereo loops, with twelve synchronized intensity stems. Each has a distinct root, tempo, motif and instrumentation drawn from orchestral, glass, funk, rock, metal, gospel, dance, jazz, disco or soul arrangements. There are no commercial recordings, samples, vocals or quotations from the named songs. Rebuilding these assets requires NumPy and ffmpeg; game runtime requires neither.
 
-`scripts/sound.gd` owns two dedicated music players, separate from effect voices. Both stems start together and loop at the same duration. Phase zero plays the base arrangement; phases one and two smoothly introduce the intensity stem at increasing volume. Pause freezes both streams, leaving combat stops them, retry starts the selected score afresh, and the saved Boss Music toggle controls music independently of effects. Master volume controls both; zero mutes the bus.
+`scripts/sound.gd` owns two dedicated music players, separate from effect voices. Both stems start together and loop at the same duration. Phase zero plays the base arrangement; phases one and two smoothly introduce the intensity stem at increasing volume. Pause and nested in-fight panels freeze both streams without restarting them, leaving combat stops them, retry starts the selected score afresh, and the saved Boss Music toggle controls music independently of effects. Master volume controls both; zero mutes the bus.
 
 ## Form modulation
 
