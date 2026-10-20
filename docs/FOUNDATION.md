@@ -1,16 +1,16 @@
-# Foundation, version 0.8.0
+# Foundation — initial systems through 0.8.4
 
-Rhapsody: Allegro uses one Godot simulation for browser and desktop. The prototype combines action boss fights with top-down / side-scrolling transitions. Combat has no required beat timing. Final art, story and soundtrack remain open for feedback.
+Rhapsody: Allegro uses one Godot simulation for browser and desktop. The game combines top-down and side-scrolling musical boss fights. Combat has no required beat timing. This document also preserves historical implementation notes; the up-to-date art, animation and soundtrack details are in STAGE_ART_AND_AUDIO.md.
 
 ## Gameplay revision
 
-Four characters replace in-fight set switching. Each has a locked weapon, ability, passive and drawback; see WEAPONS.md for values. The character selection guard also applies to pause, retries, intermissions and nested menus. Only Lyra / Horizon creates friendly projectiles, while the other characters use melee abilities. Parrying is deferred.
+Four characters replace in-fight set switching. Each has a locked weapon, ability, passive and drawback; see WEAPONS.md for values. The character selection guard also applies to pause, retries, intermissions and nested menus. Only Lyra / Voice creates ranged voice-wave projectiles, while the other characters use melee abilities. Parrying is deferred.
 
 The eight-step tutorial advances on real movement, landed attacks, defensive events, platform collision and a rehearsal boss clear. Early target lessons are immortal. Practice shots are slow, incoming tutorial damage is halved and death retries the current lesson. Tutorial completion is a profile flag; normal records, unlocks and campaign checkpoints are preserved.
 
 Boss health is now 1500 / 2100 / 2800, with shorter recovery and faster patterns. Bosses pursue distant players, punish close approaches with telegraphed circular sweeps and target mines at distant players. Later phases add separately warned follow-up attacks. Ordinary movement freezes during windup to preserve aim readability. Stagger lasts 1.25 seconds, grants +30% damage and has a seven-second lock. Higher difficulties increase damage, speed and density.
 
-Gold hazard warnings never damage. Active beams, mines and expanding waves require movement, jumping or dodging. Parry collision behavior is preserved but disabled. Hazard rendering is clipped to the arena. All fights retain three health phases, changing perspective at 67% and 33%, clearing attacks and granting protection. Platforms support buffered jumps, coyote time and dropping through by holding down.
+Gold-colored warning marks telegraph an approaching attack: they do not damage during the warning period, but the affected area becomes dangerous when activated. Active beams, mines and expanding waves require movement, jumping or dodging. Parry collision behavior is preserved but disabled. Hazard rendering is clipped to the arena. All fights retain three health phases, changing perspective at 67% and 33%, clearing attacks and granting protection. Platforms support buffered jumps, coyote time and dropping through by holding down.
 
 Augmentation cards show a side reference panel on mouse hover, keyboard/controller focus or touch inspection. The panel explains the primary mechanic and a related mechanic. All eight upgrades map to authored definitions; Resonant Core explains how resonance is earned, the 100-point threshold and the break's damage, protection and attack clearing. Inspection does not choose an upgrade; the explicit CHOOSE button does.
 
@@ -42,9 +42,9 @@ Coarse touch devices select the phone interface at boot. Landscape keeps a 720-u
 
 Touch routing tracks the movement finger independently from right-thumb actions. Sliding into a new action activates it once; leaving the hit region clears held fire. Releasing or cancelling a touch, losing focus or rotating cannot leave a held action behind. Orientation changes pause encounters. Changes to the presentation size clear touch ownership and pause an active encounter. Menu actions use large targets and portrait cards.
 
-Phone auto attacks are an optional saved input preference, enabled by default. They call existing melee / rifle methods and never modify damage or timing. Rifle fire reserves dodge energy, and the tutorial's ability objective still requires a manual skill input. Basic melee auto attacks can satisfy its three-hit objective. The manual strike button appears when auto is disabled. Character selection locks remain enforced in every phone menu.
+Phone auto attacks are an optional saved input preference, enabled by default. They call the same existing strike / ranged-ability methods and never modify damage or timing. Lyra's automatic ranged ability reserves dodge energy, and the tutorial's ability objective still requires a manual skill input. Basic melee auto attacks can satisfy its three-hit objective. The manual strike button appears when auto is disabled. Character selection locks remain enforced in every phone menu.
 
-Phone regressions dispatch simultaneous touch and drag events in both orientations, covering action slides, jump / drop gestures, target reach, auto rifle energy reserve, manual control, contextual upgrade confirmation, focus / rotation cleanup and camera alignment. Native phone captures use 390×844 and 844×390 windows. Browser-specific touch feel, audio, fullscreen and wake-lock behavior still require physical device testing.
+Phone regressions dispatch simultaneous touch and drag events in both orientations, covering action slides, jump / drop gestures, target reach, auto-ranged energy reserve, manual control, contextual upgrade confirmation, focus / rotation cleanup and camera alignment. Native phone captures use 390×844 and 844×390 windows. Browser-specific touch feel, audio, fullscreen and wake-lock behavior still require physical device testing.
 
 ## Movement and deferred parry revision
 
