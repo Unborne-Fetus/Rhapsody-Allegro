@@ -52,6 +52,7 @@ jobs:
           godot --headless --script res://tests/weapon_test.gd
           godot --headless --script res://tests/song_boss_test.gd
           godot --headless --script res://tests/phone_test.gd
+          godot --headless --script res://tests/stage_test.gd
 
       - uses: actions/setup-node@v4
         with:
