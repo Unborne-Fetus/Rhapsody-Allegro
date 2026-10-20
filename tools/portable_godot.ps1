@@ -197,9 +197,25 @@ function EnsureTemplates {
 
 function RunGodot([string]$Description, [string[]]$Arguments) {
     Log $Description
-    & $script:editor @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Godot failed ($Description), exit code $LASTEXITCODE. Fix the displayed error and retry."
+    $logDir = Join-Path $root 'build'
+    if (-not (Test-Path -LiteralPath $logDir)) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    }
+    $logFile = Join-Path $logDir 'last-godot-output.txt'
+    # Godot sometimes emits SCRIPT ERROR to stderr while returning exit 0.
+    # Keep the complete console output so a failing preflight is diagnosable.
+    $oldPreference = $ErrorActionPreference
+    $exitCode = 1
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $script:editor @Arguments 2>&1 | Tee-Object -FilePath $logFile
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
+    if ($exitCode -ne 0) {
+        throw "Godot failed ($Description), exit code $exitCode. Diagnostic output: $logFile"
     }
 }
 
@@ -258,6 +274,19 @@ function ExportBuilds {
             Write-Warning 'Python not found: raw Godot Web export is still usable locally.'
         }
     }
+    # Do not announce release ZIPs as playable until the test suites finish.
+    # FAST still requires AssertPlayableBoot above, but skips extended tests.
+    if ($SkipTests) {
+        Write-Warning 'FAST build: boot verified, extended regression tests intentionally skipped.'
+    } else {
+        $tests = @('combat_test', 'advanced_test', 'input_test',
+                  'weapon_test', 'song_boss_test', 'phone_test', 'stage_test')
+        foreach ($name in $tests) {
+            RunGodot "Testing $name" @('--headless', '--path', $root, '--script', "res://tests/$name.gd")
+        }
+        Log 'All seven Godot regression suites completed without a nonzero exit code.'
+    }
+
     $dist = Join-Path $root 'dist'
     $webToZip = $web
     if (Test-Path (Join-Path $dist 'index.html')) { $webToZip = $dist }
@@ -271,17 +300,6 @@ function ExportBuilds {
     Log "  $windowsExe"
     Log "  $winZip"
     Log "  $webZip"
-
-    if ($SkipTests) {
-        Write-Warning 'Validation was skipped. This is a build, not a verified release.'
-        return
-    }
-    $tests = @('combat_test', 'advanced_test', 'input_test',
-               'weapon_test', 'song_boss_test', 'phone_test', 'stage_test')
-    foreach ($name in $tests) {
-        RunGodot "Testing $name" @('--headless', '--path', $root, '--script', "res://tests/$name.gd")
-    }
-    Log 'All seven Godot regression suites passed.'
 }
 
 try {
