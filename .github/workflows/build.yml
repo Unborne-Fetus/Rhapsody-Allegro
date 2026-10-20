@@ -52,14 +52,26 @@ jobs:
         run: python3 tools/package_web.py
 
       - name: Run Godot combat regressions
+        shell: bash
         run: |
-          godot --headless --script res://tests/combat_test.gd
-          godot --headless --script res://tests/advanced_test.gd
-          godot --headless --script res://tests/input_test.gd
-          godot --headless --script res://tests/weapon_test.gd
-          godot --headless --script res://tests/song_boss_test.gd
-          godot --headless --script res://tests/phone_test.gd
-          godot --headless --script res://tests/stage_test.gd
+          set -euo pipefail
+          for suite in \
+            combat_test:COMBAT_TESTS \
+            advanced_test:ADVANCED_TESTS \
+            input_test:INPUT_TESTS \
+            weapon_test:CHARACTER_TUTORIAL_TESTS \
+            song_boss_test:SONG_BOSS_TESTS \
+            phone_test:PHONE_TESTS \
+            stage_test:STAGE_TESTS; do
+            file="${suite%%:*}"
+            label="${suite#*:}"
+            godot --headless --script "res://tests/${file}.gd" 2>&1 | tee /tmp/rhapsody-test.log
+            grep -Eq "${label} checks=[0-9]+ failures=0" /tmp/rhapsody-test.log
+            if grep -Eq '^(SCRIPT ERROR|ERROR|FATAL):' /tmp/rhapsody-test.log; then
+              echo "Godot reported a script/runtime error in ${file}" >&2
+              exit 1
+            fi
+          done
 
       - uses: actions/setup-node@v4
         with:
