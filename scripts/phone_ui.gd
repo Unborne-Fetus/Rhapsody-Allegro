@@ -36,7 +36,7 @@ func pause_rect() -> Rect2:
 func auto_rect() -> Rect2:
 	return Rect2(16,12,120,80)
 func heading(g: Node2D,title: String,sub: String = "") -> void:
-	g.text_at("R / A · THUMB CONTROLS · 0.8.2",Vector2(32,40),19,g.TEAL)
+	g.text_at("R / A · THUMB CONTROLS · 0.8.3",Vector2(32,40),19,g.TEAL)
 	g.wrapped_text(title,Vector2(32,94),size().x-64,32,g.PAPER)
 	if not sub.is_empty(): g.wrapped_text(sub,Vector2(32,132),size().x-64,21,g.MUTED)
 func button(g: Node2D,label: String,rect: Rect2,action: String,primary: bool = false) -> void:
@@ -190,7 +190,7 @@ func draw_controls(g: Node2D) -> void:
 		var text_width = g.font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,fontsize).x
 		g.text_at(label,item[0]+Vector2(-text_width/2,8),fontsize,color if ready else g.MUTED)
 		if action == "burst": g.draw_arc(item[0],item[3]-8,-PI/2,-PI/2+TAU*g.resonance/100,48,g.GOLD,4,true)
-	g.text_at("0.8.2",Vector2(24,canvas_size.y-22),15,g.MUTED)
+	g.text_at("0.8.3",Vector2(24,canvas_size.y-22),15,g.MUTED)
 	var face = Rect2(24,22,104,52)
 	g.draw_style_box(g.panel_style(Color("20332e") if g.profile.data.auto_attack else Color("202b37"),g.TEAL if g.profile.data.auto_attack else g.MUTED),face)
 	g.text_at("AUTO "+("ON" if g.profile.data.auto_attack else "OFF"),face.position+Vector2(9,33),18,g.TEAL if g.profile.data.auto_attack else g.MUTED)
