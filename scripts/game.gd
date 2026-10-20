@@ -988,21 +988,22 @@ func draw_menu() -> void:
 			var x = 64+i*292; var c = Color(weapon.color)
 			var selected = weapon_index == i
 			draw_style_box(panel_style(Color("15222c"),c if selected else Color("33414e")),Rect2(x,220,276,404))
-			draw_character_portrait(Vector2(x+138,269),i)
+			# Portrait stays completely inside its card and away from the name.
+			draw_character_portrait(Vector2(x+138,294),i)
 			text_at(character.name,Vector2(x+18,332),26,c)
 			text_at(weapon.name+" / "+character.title,Vector2(x+18,357),13,MUTED)
 			text_at("HP %d / SPEED %d" % [character.health,character.speed],Vector2(x+18,385),14)
 			text_at(character.ability,Vector2(x+18,416),15,c)
-			wrapped_text(character.ability_text,Vector2(x+18,438),240,13,MUTED)
-			wrapped_text(character.passive,Vector2(x+18,489),240,13,TEAL)
-			wrapped_text(character.debuff,Vector2(x+18,541),240,13,CORAL)
+			wrapped_text(character.ability_text,Vector2(x+18,438),240,14,MUTED)
+			wrapped_text(character.passive,Vector2(x+18,489),240,14,TEAL)
+			wrapped_text(character.debuff,Vector2(x+18,541),240,14,CORAL)
 			if not character_locked(): button("SELECTED" if selected else "SELECT",Rect2(x+18,580,240,32),"set_"+str(i),selected)
 			elif selected: text_at("CURRENT CHARACTER",Vector2(x+18,606),14,c)
 		centered("J / right mouse / RT / ABILITY: musician skill. Only the Singer fires sound projectiles.",656,15,MUTED)
 		button("BACK",Rect2(490,674,300,34),"back",true)
 	elif screen == "select":
 		centered("CHOOSE YOUR MOVEMENT",151,34)
-		centered("Nine song encounters plus three originals. Twelve movements in all.",188,17,MUTED)
+		centered("Three original movements. Nine song encounters. Twelve bosses.",188,17,MUTED)
 		var first = 0 if boss_page == 0 else 3+(boss_page-1)*4
 		var last = 3 if boss_page == 0 else mini(first+4,bosses.size())
 		for i in range(first,last):
@@ -1610,7 +1611,7 @@ func draw_tutorial_hud() -> void:
 	text_at("COMPLETE" if tutorial.transition>0 else "%d / %d" % [tutorial.progress,lesson.count],Vector2(522,335),13,GOLD)
 
 func draw_character_portrait(p: Vector2,index: int) -> void:
-	StageArt.portrait(self,p,index)
+	StageArt.portrait(self,p,index,0.72)
 
 func configure_phone() -> void:
 	if phone_configuring: return
