@@ -9,6 +9,14 @@ func run_tests() -> void:
 	var game = load("res://scenes/main.tscn").instantiate(); root.add_child(game)
 	game.set_process(false); game.sound.enabled = false; game.profile.path = "user://stage-tests.json"
 	check(game.StageArt.ATLAS != null and game.StageArt.ATLAS.get_size() == Vector2(768,528),"Twelve boss columns and six pixel animation rows import correctly")
+	game.screen = "playing"
+	game.boss_flash = 0.1
+	check(game.StageArt.frame_for(game,0) == 5,"Boss switches to the illustrated hit-reaction pose")
+	game.boss_flash = 0.0; game.charge_time = 0.3
+	check(game.StageArt.frame_for(game,0) == 4,"Boss switches to the illustrated attack windup pose")
+	game.charge_time = 0.0; game.attack_timer = 1.0
+	check(game.StageArt.frame_for(game,0)>=2 and game.StageArt.frame_for(game,0)<=3,"Moving boss selects animated travel poses")
+	game.screen = "title"
 	for index in 12:
 		for pose in 6:
 			var region = game.StageArt.region(index)
