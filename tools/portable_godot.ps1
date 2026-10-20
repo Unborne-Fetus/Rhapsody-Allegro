@@ -203,6 +203,28 @@ function RunGodot([string]$Description, [string[]]$Arguments) {
     }
 }
 
+function AssertPlayableBoot {
+    # Native Godot can return exit 0 while printing GDScript parse errors
+    # and packing an unusable scene. Require positive proof of a real boot.
+    $buildDir = Join-Path $root 'build'
+    if (-not (Test-Path -LiteralPath $buildDir)) {
+        New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+    }
+    $marker = Join-Path $buildDir 'preflight-ok.txt'
+    if (Test-Path -LiteralPath $marker) {
+        Remove-Item -LiteralPath $marker -Force
+    }
+    RunGodot 'Checking that the real game loads and its pixel assets initialize' @('--headless', '--path', $root, '--script', 'res://tests/build_preflight.gd')
+    if (-not (Test-Path -LiteralPath $marker)) {
+        throw 'Godot did not complete the playable boot check. The game may have script parse errors even though Godot returned exit code 0. See the SCRIPT ERROR lines above.'
+    }
+    $stamp = (Get-Content -LiteralPath $marker -Raw).Trim()
+    if ($stamp -ne 'RHAPSODY_PREFLIGHT_OK') {
+        throw 'Game boot verification marker was invalid. Refusing to package a broken executable.'
+    }
+    Log 'Playable boot check passed. No missing game scripts or sprite atlases.'
+}
+
 function ExportBuilds {
     $build = Join-Path $root 'build'
     $web = Join-Path $build 'web'
@@ -211,6 +233,7 @@ function ExportBuilds {
     Set-Content -LiteralPath (Join-Path $build '.gdignore') -Value '' -NoNewline
 
     RunGodot 'Importing project assets' @('--headless', '--path', $root, '--editor', '--import', '--quit')
+    AssertPlayableBoot
     RunGodot 'Exporting playable Windows EXE' @('--headless', '--path', $root, '--export-release', 'Windows', (Join-Path $windows 'Rhapsody-Allegro.exe'))
     RunGodot 'Exporting playable Web game' @('--headless', '--path', $root, '--export-release', 'Web', (Join-Path $web 'index.html'))
 
@@ -268,6 +291,7 @@ try {
         # A fresh Git checkout does not include Godot's ignored texture import
         # cache. Import before the first play so SVG and PNG textures can load.
         RunGodot 'Importing/refreshing playable project assets' @('--headless', '--path', $root, '--editor', '--import', '--quit')
+        AssertPlayableBoot
         Log 'Starting the real Godot project (no export templates needed)...'
         & $script:editor --path $root
         if ($LASTEXITCODE -ne 0) { throw "The game exited with code $LASTEXITCODE." }
