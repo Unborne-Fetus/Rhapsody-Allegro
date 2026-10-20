@@ -36,7 +36,7 @@ func pause_rect() -> Rect2:
 func auto_rect() -> Rect2:
 	return Rect2(16,12,120,80)
 func heading(g: Node2D,title: String,sub: String = "") -> void:
-	g.text_at("R / A · THUMB CONTROLS · 0.8.3",Vector2(32,40),19,g.TEAL)
+	g.text_at("R / A · THUMB CONTROLS · 0.8.4",Vector2(32,40),19,g.TEAL)
 	g.wrapped_text(title,Vector2(32,94),size().x-64,32,g.PAPER)
 	if not sub.is_empty(): g.wrapped_text(sub,Vector2(32,132),size().x-64,21,g.MUTED)
 func button(g: Node2D,label: String,rect: Rect2,action: String,primary: bool = false) -> void:
@@ -106,7 +106,7 @@ func draw_menu(g: Node2D) -> void:
 			button(g,"TRAINING ARENA",Rect2(x,top+320,width,82),"training")
 			button(g,"BACK",Rect2(32,size().y-112,260,82),"menu")
 		"intermission":
-			heading(g,"CHOOSE AN UPGRADE","Tap to read. Confirm when ready.")
+			heading(g,"CHOOSE AN UPGRADE","Inspect an upgrade, then confirm your choice.")
 			var rect = Rect2(32,180,656,350) if portrait else Rect2(56,180,610,414)
 			g.draw_style_box(g.panel_style(Color("14212c"),g.GOLD),rect)
 			var selected: Dictionary = g.upgrade_options[g.upgrade_focus]
@@ -125,7 +125,7 @@ func draw_menu(g: Node2D) -> void:
 			heading(g,"TWO-THUMB GUIDE")
 			var rect = Rect2(32,180,656,890) if portrait else Rect2(56,180,1168,350)
 			g.draw_style_box(g.panel_style(Color("14212c"),g.TEAL),rect)
-			var instructions = "LEFT: drag anywhere in the left control area to move. Slide up to jump in platform view; slide down to drop through.\n\nRIGHT: tap DODGE or ABILITY. Slide between buttons without lifting. Hold ABILITY to repeat. BREAK spends full resonance.\n\nAUTO ATTACK: basic strikes trigger when the boss is in reach. the Singer fires automatically at range while saving dodge energy. Turn AUTO off for a manual STRIKE button.\n\nGold warnings are safe. Active floor attacks need movement or dodging; dodge through incoming bullets."
+			var instructions = "LEFT: drag anywhere in the left control area to move. Slide up to jump in platform view; slide down to drop through.\n\nRIGHT: tap DODGE or ABILITY. Slide between buttons without lifting. Hold ABILITY to repeat. BREAK spends full resonance.\n\nAUTO ATTACK: basic strikes trigger when the boss is in reach. the Singer fires automatically at range while saving dodge energy. Turn AUTO off for a manual STRIKE button.\n\nGold markings warn of imminent attacks; get clear before they activate. Green openings show safe lanes. Dodge through active projectiles."
 			var y = rect.position.y+38
 			for paragraph in instructions.split("\n\n"):
 				y = g.wrapped_text(paragraph,Vector2(rect.position.x+24,y),rect.size.x-48,23,g.MUTED)+16
@@ -181,16 +181,23 @@ func draw_controls(g: Node2D) -> void:
 	for item in controls(g):
 		var action: String = item[1]
 		var cooldown: float = g.dash_cd if action == "dodge" else (g.shoot_cd if action == "shoot" else (g.parry_cd if action == "parry" else 0))
-		var ready = cooldown<=0 and (g.resonance>=100 if action == "burst" else true)
+		var can_afford := (g.energy >= float(g.Characters.ROSTER[g.weapon_index].cost) if action == "shoot"
+			else (g.energy >= g.run.stat("dodge_cost") if action == "dodge" else true))
+		var ready: bool = cooldown<=0 and can_afford and (g.resonance>=100 if action == "burst" else true)
 		var color = g.GOLD if action == "burst" else g.TEAL
 		g.draw_circle(item[0],item[3],Color("12232f"))
 		g.draw_circle(item[0],item[3],Color(color,.85 if ready else .25),false,4,true)
+		# Recharge indicators stay in the rings instead of obscuring labels.
+		if cooldown>0 and action in ["shoot","dodge"]:
+			var total := float(g.Characters.ROSTER[g.weapon_index].cooldown) if action == "shoot" else g.run.stat("dodge_cd")
+			var progress := 1.0-clampf(cooldown/maxf(total,0.01),0.0,1.0)
+			g.draw_arc(item[0],item[3]-7,-PI/2,-PI/2+TAU*progress,18,Color(color,0.75),3,true)
 		var label: String = item[2] if cooldown<=0 else "%.1f" % cooldown
-		var fontsize = 23 if portrait else 21
+		var fontsize = 23 if portrait else 20
 		var text_width = g.font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,fontsize).x
 		g.text_at(label,item[0]+Vector2(-text_width/2,8),fontsize,color if ready else g.MUTED)
 		if action == "burst": g.draw_arc(item[0],item[3]-8,-PI/2,-PI/2+TAU*g.resonance/100,48,g.GOLD,4,true)
-	g.text_at("0.8.3",Vector2(24,canvas_size.y-22),15,g.MUTED)
+	g.text_at("0.8.4",Vector2(24,canvas_size.y-22),15,g.MUTED)
 	var face = Rect2(24,22,104,52)
 	g.draw_style_box(g.panel_style(Color("20332e") if g.profile.data.auto_attack else Color("202b37"),g.TEAL if g.profile.data.auto_attack else g.MUTED),face)
 	g.text_at("AUTO "+("ON" if g.profile.data.auto_attack else "OFF"),face.position+Vector2(9,33),18,g.TEAL if g.profile.data.auto_attack else g.MUTED)
