@@ -98,20 +98,19 @@ function FetchVerified([string]$Url, [string]$Destination,
 }
 
 function EnsureEditor {
+    # Exclude tool archives even when using an editor supplied via GODOT.
+    if (-not (Test-Path $portable)) {
+        New-Item -ItemType Directory -Path $portable -Force | Out-Null
+    }
+    $ignoreFile = Join-Path $portable '.gdignore'
+    if (-not (Test-Path -LiteralPath $ignoreFile)) {
+        [IO.File]::WriteAllText($ignoreFile, '')
+    }
     if ($env:GODOT) {
         if (-not (Test-Path $env:GODOT)) { throw "GODOT points to a missing file: $env:GODOT" }
         $script:editor = (Resolve-Path $env:GODOT).Path
         Log "Using selected Godot editor: $script:editor"
         return
-    }
-    if (-not (Test-Path $portable)) {
-        New-Item -ItemType Directory -Path $portable -Force | Out-Null
-    }
-    # Even if Godot was downloaded on an earlier run, exclude the cache from
-    # project imports/exports (including a 1.3GB partially downloaded .tpz).
-    $ignoreFile = Join-Path $portable '.gdignore'
-    if (-not (Test-Path -LiteralPath $ignoreFile)) {
-        [IO.File]::WriteAllText($ignoreFile, '')
     }
     if (Test-Path $editor) { return }
     $archive = Join-Path $portable $archiveName
