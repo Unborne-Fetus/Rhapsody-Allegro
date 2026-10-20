@@ -11,14 +11,18 @@ static func region(index: int) -> Rect2:
 	return Rect2(float(clampi(index,0,11))*CELL.x,0,CELL.x,CELL.y)
 
 static func frame_for(g: Node2D,index: int) -> int:
+	# Do not animate an idle or staggered boss as though it were running.
+	var idle := int(g.total_time*2.5+index)%2
 	if g.screen != "playing" or g.shift_left>0.0:
-		return int(g.total_time*2.5+index)%2
-	if g.boss_flash>0.0:
+		return idle
+	if g.boss_flash>0.0 or g.stagger_time>0.0:
 		return 5
-	if g.charge_time>0.0 or g.attack_timer<0.18:
+	# The pose follows the actual warning and strike, not attack_timer, which
+	# resets before each windup and used to skip most visible attacks.
+	if g.windup>0.0 or g.charge_time>0.0 or g.boss_attack_recoil>0.0:
 		return 4
-	# Two real movement poses alternate as the boss pursues the player.
-	# All boss portraits also animate while the gallery is open.
+	if g.songs.recovery>0.0 or (g.training and not g.training_attacks) or (g.tutorial_active and g.tutorial.step<7):
+		return idle
 	return 2 + int(g.total_time*7.0+index)%2
 
 static func draw(g: Node2D,p: Vector2,index: int,height: float,flip: bool = false,alpha: float = 1.0,lean: float = 0.0) -> void:
@@ -29,7 +33,10 @@ static func draw(g: Node2D,p: Vector2,index: int,height: float,flip: bool = fals
 	if flip:
 		rect.position.x += width
 		rect.size.x = -width
-	g.draw_texture_rect_region(ATLAS,rect,source,Color(1,1,1,alpha),false,true)
+	# A gentle impact tint enhances the existing pixel art without replacing
+	# its native palette or smoothing the nearest-neighbor sprite edges.
+	var tint := Color(1.0,0.78,0.72,alpha) if g.screen == "playing" and g.boss_flash>0.0 else Color(1.0,1.0,1.0,alpha)
+	g.draw_texture_rect_region(ATLAS,rect,source,tint,false,true)
 
 static func boss(g: Node2D,p: Vector2,index: int,size: float) -> void:
 	var flip: bool = g.screen=="playing" and g.boss.x>g.player.x
