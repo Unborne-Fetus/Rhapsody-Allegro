@@ -4,6 +4,7 @@ extends SceneTree
 ## may still emit an unusable .exe/.pck. Only create the success marker after
 ## the actual main scene and its dependencies load and become initialized.
 const MARKER := "res://build/preflight-ok.txt"
+const StageArt = preload("res://scripts/stage_art.gd")
 
 func _initialize() -> void:
 	call_deferred("verify_project")
@@ -34,18 +35,11 @@ func verify_project() -> void:
 	if not (boss_list is Array) or boss_list.size() != 12:
 		fail("The 12 boss encounters did not load.")
 		return
-	var stage: Variant = game.get("StageArt")
-	if stage == null:
-		# Script constants are accessible through the attached GDScript.
-		stage = game.get_script().get("StageArt")
-	if stage == null:
-		fail("Pixel art stage module is unavailable.")
-		return
-	# Frame resources force script dependency evaluation for both player and boss.
-	if stage.ATLAS == null or stage.PixelPerformers.ATLAS == null:
+	# Validate the *real* sprite resources, not merely filenames.
+	if StageArt.ATLAS == null or StageArt.PixelPerformers.ATLAS == null:
 		fail("Musician or boss pixel atlas failed to load.")
 		return
-	if stage.ATLAS.get_size() != Vector2(768,528) or stage.PixelPerformers.ATLAS.get_size() != Vector2(320,320):
+	if StageArt.ATLAS.get_size() != Vector2(768,528) or StageArt.PixelPerformers.ATLAS.get_size() != Vector2(320,320):
 		fail("Pixel atlases have unexpected dimensions.")
 		return
 	var file := FileAccess.open(MARKER,FileAccess.WRITE)
