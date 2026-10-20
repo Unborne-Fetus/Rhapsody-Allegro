@@ -279,12 +279,28 @@ function ExportBuilds {
     if ($SkipTests) {
         Write-Warning 'FAST build: boot verified, extended regression tests intentionally skipped.'
     } else {
-        $tests = @('combat_test', 'advanced_test', 'input_test',
-                  'weapon_test', 'song_boss_test', 'phone_test', 'stage_test')
-        foreach ($name in $tests) {
+        $tests = @(
+            @('combat_test', 'COMBAT_TESTS'),
+            @('advanced_test', 'ADVANCED_TESTS'),
+            @('input_test', 'INPUT_TESTS'),
+            @('weapon_test', 'CHARACTER_TUTORIAL_TESTS'),
+            @('song_boss_test', 'SONG_BOSS_TESTS'),
+            @('phone_test', 'PHONE_TESTS'),
+            @('stage_test', 'STAGE_TESTS')
+        )
+        foreach ($test in $tests) {
+            $name = [string]$test[0]
+            $label = [string]$test[1]
             RunGodot "Testing $name" @('--headless', '--path', $root, '--script', "res://tests/$name.gd")
+            $testLog = Get-Content -LiteralPath (Join-Path $build 'last-godot-output.txt') -Raw
+            # Some GDScript failures terminate a test without setting a
+            # nonzero process exit status. Require its own passing report.
+            $passed = [regex]::Escape($label) + '\s+checks=[0-9]+\s+failures=0\b'
+            if ($testLog -notmatch $passed -or $testLog -match '(?m)^\s*(?:SCRIPT ERROR|ERROR|FATAL):') {
+                throw "Test $name did not produce a clean pass report. See build/last-godot-output.txt."
+            }
         }
-        Log 'All seven Godot regression suites completed without a nonzero exit code.'
+        Log 'All seven Godot regression suites reported zero failures.'
     }
 
     $dist = Join-Path $root 'dist'
