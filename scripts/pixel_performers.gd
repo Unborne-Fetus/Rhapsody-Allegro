@@ -14,7 +14,8 @@ static func frame_for(g: Node2D, portrait: bool = false) -> int:
 	if g.hurt_animation > 0.0:
 		return 34 + int(g.elapsed*12.0)%2
 	if g.attack_animation > 0.0:
-		return 30 + clampi(int((0.36-g.attack_animation)*12.0),0,3)
+		var completed := 1.0-g.attack_animation/maxf(g.attack_visual_duration,0.01)
+		return 30 + clampi(int(completed*4.0),0,3)
 	if g.side:
 		if g.ground_grace <= 0.0 and absf(g.velocity.y)>35.0:
 			return 26 if g.velocity.y < -320.0 else (27 if g.velocity.y < 0.0 else (28 if g.velocity.y < 320.0 else 29))
@@ -44,19 +45,22 @@ static func pose_for(frame: int, moving: bool = true) -> int:
 	if not moving: return 0
 	return 2 + posmod(frame,2)
 
-static func draw(g: Node2D,p: Vector2,character: int,frame: int,alpha: float = 1.0,flip: bool = false) -> void:
+static func draw(g: Node2D,p: Vector2,character: int,frame: int,alpha: float = 1.0,flip: bool = false,scale: float = 1.0) -> void:
 	var moving: bool = g.velocity.length()>35.0
 	var pose := pose_for(frame,moving)
 	var source := Rect2(float(clampi(character,0,3))*CELL.x,float(pose)*CELL.y,CELL.x,CELL.y)
 	# Boots align to the same collision/shadow origin across all frames.
-	var dest := Rect2(p+Vector2(-SIZE.x*0.5,-82),SIZE)
+	# Size the atlas without filtering it. Small preview sprites should sit
+	# fully inside cards rather than overlapping their title text.
+	var preview_size := SIZE*scale
+	var dest := Rect2(p+Vector2(-preview_size.x*0.5,-82.0*scale),preview_size)
 	if flip:
-		dest.position.x += SIZE.x
-		dest.size.x = -SIZE.x
+		dest.position.x += preview_size.x
+		dest.size.x = -preview_size.x
 	g.draw_texture_rect_region(ATLAS,dest,source,Color(1,1,1,alpha),false,true)
 
 static func player(g: Node2D,p: Vector2,character: int,alpha: float = 1.0) -> void:
 	draw(g,p,character,frame_for(g),alpha,g.facing.x<0.0)
 
-static func portrait(g: Node2D,p: Vector2,character: int) -> void:
-	draw(g,p,character,frame_for(g,true))
+static func portrait(g: Node2D,p: Vector2,character: int,scale: float = 1.0) -> void:
+	draw(g,p,character,frame_for(g,true),1.0,false,scale)
