@@ -16,6 +16,21 @@ func run_tests() -> void:
 	check(game.StageArt.frame_for(game,0) == 4,"Boss switches to the illustrated attack windup pose")
 	game.charge_time = 0.0; game.attack_timer = 1.0
 	check(game.StageArt.frame_for(game,0)>=2 and game.StageArt.frame_for(game,0)<=3,"Moving boss selects animated travel poses")
+	game.windup = 0.38
+	check(game.StageArt.frame_for(game,0) == 4,"Actual active warning selects boss windup frame regardless of cooldown")
+	game.windup = 0.0; game.boss_attack_recoil = 0.12
+	check(game.StageArt.frame_for(game,0) == 4,"Short attack follow-through keeps the combat pose visible")
+	game.boss_attack_recoil = 0.0; game.stagger_time = 0.15
+	check(game.StageArt.frame_for(game,0) == 5,"Stagger visibly changes the boss sprite")
+	game.stagger_time = 0.0; game.training = true; game.training_attacks = false
+	check(game.StageArt.frame_for(game,0)<2,"Passive training target does not walk in place")
+	game.training = false
+	game.open_panel("help")
+	check(game.combat_music_paused(),"Opening help during a fight preserves the paused score")
+	game.open_panel("settings")
+	check(game.combat_music_paused(),"Nested settings keep the same music position")
+	game.close_panel(); game.close_panel()
+	check(game.screen == "playing" and not game.combat_music_paused(),"Closing nested panels resumes original fight")
 	game.screen = "title"
 	for index in 12:
 		for pose in 6:
