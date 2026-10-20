@@ -136,6 +136,14 @@ Open `http://localhost:8060`. Hosted play needs no development tools. Local Godo
 
 The web packager preserves the actual engine bytes, splits them into assets below static-host limits, uses content-addressed filenames, and adds a branded loader with download progress. `dist/build-info.json` records engine and game hashes. `build/web/` retains the standard Godot export; `build/windows/` contains the desktop executable.
 
+## Build repair — Godot 4.5.1 compile error hotfix
+
+If a previous local `build.bat` run reports `Cannot infer the type` for `completed`, `can_afford` or `total`, pull the newest `main`. Version 0.8.4's two sprite/UI files now explicitly type those values for Godot 4.5.1. A previous export may have written `Rhapsody-Allegro.exe` and Web files **even though the scripts did not compile**; discard those old exports.
+
+The local `PLAY.bat` and `build.bat` runners now check that the main Godot scene actually boots, the twelve bosses load and the performer/boss atlases initialize **before launching or exporting**. This validation requires a positive success marker rather than trusting Godot's process exit code. Release ZIPs are made only after the seven regression suites report zero failures (except the explicit `FAST` variant, which still requires the boot check). All Godot output is saved to `build/last-godot-output.txt`; script errors or a failed boot also result in `build/last-build-error.txt`.
+
+Previously downloaded official Godot 4.5.1 editors and export templates are reused. There is no need to remove them or change GitHub Actions billing for the local build.
+
 ## Verification
 
 The seven headless suites cover combat, progression, dispatched input, character/tutorial rules and song encounters. Stress simulation includes 24 minutes for the original roster and 36 minutes across every new boss, phase and difficulty. Native OpenGL captures verify the tutorial, character roster, upgrade references, and phone menus / combat in both orientations. Both release exports and the WebAssembly package are checked locally. A browser smoke test is included in CI; browser end-to-end testing is unavailable in this environment, so no successful browser playtest is claimed.
