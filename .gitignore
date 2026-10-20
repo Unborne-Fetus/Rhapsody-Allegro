@@ -9,3 +9,5 @@ __pycache__/
 *.pyc
 
 tools/.portable-godot/
+# Temporary local Pages export staging directory.
+docs/.pages-staging/
