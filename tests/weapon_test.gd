@@ -42,7 +42,7 @@ func run_tests() -> void:
 	for voice in game.sound.voices: voice.stop()
 	game.sound.enabled = false
 	game.profile.data.eco_mode = true; game.sparks.clear()
-	var gameplay_rng_state := game.rng.state
+	var gameplay_rng_state: int = int(game.rng.state)
 	game.emit_sparks(Vector2(500,400),game.TEAL,300)
 	check(game.rng.state == gameplay_rng_state,"Cosmetic emission does not consume combat RNG")
 	check(game.sparks.size() == 80,"Eco mode respects its eighty-particle VFX budget")
@@ -51,7 +51,7 @@ func run_tests() -> void:
 	check(game.sparks.size() == 300,"Full effects mode preserves the original particle budget")
 	prepare(2)
 	game.profile.data.eco_mode = true
-	var time_before := game.elapsed
+	var time_before: float = float(game.elapsed)
 	game._process(1.0/30.0)
 	check(is_equal_approx(game.elapsed-time_before,2.0/60.0),"Eco visual refresh still advances two fixed simulation ticks")
 	check(game.profile.data.eco_mode,"Low power preference is not overridden by simulation")
