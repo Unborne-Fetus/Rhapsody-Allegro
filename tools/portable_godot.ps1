@@ -254,11 +254,11 @@ function ExportBuilds {
         return
     }
     $tests = @('combat_test', 'advanced_test', 'input_test',
-               'weapon_test', 'song_boss_test', 'phone_test')
+               'weapon_test', 'song_boss_test', 'phone_test', 'stage_test')
     foreach ($name in $tests) {
         RunGodot "Testing $name" @('--headless', '--path', $root, '--script', "res://tests/$name.gd")
     }
-    Log 'All six Godot regression suites passed.'
+    Log 'All seven Godot regression suites passed.'
 }
 
 try {
