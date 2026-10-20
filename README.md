@@ -2,7 +2,28 @@
 
 A Godot action boss rush that changes between top-down and side-scrolling combat. **Version 0.8.3 — Pixel Stage.** All four playable musicians and all twelve bosses now have distinct, transparent retro pixel-art sprites, rather than painted cutouts. The musician classes have four original poses each; every boss has six distinct poses for idle, movement, windups and damage. Each boss has an original looping score with phase-dependent intensity. Perspective changes now animate over 1.25 seconds with moving fighters, rising platforms and a musical-staff bridge. Mobile viewport fixes, the twelve-fight campaign, fixed character kits, higher jumps and deferred parrying remain.
 
-**[Previous browser testing link](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — may not contain the current repository changes. A new verified Web build requires a successful export; use `build.bat` and `PLAY-WEB.bat` for a local build in the meantime.
+**[Previous browser testing link](https://rhapsody-allegro.r4f86c2gzg.chatgpt.site)** — may not contain the current repository changes. A GitHub Pages launch path is prepared on `main/docs`, but the current version is **not deployed** until a successful Web export is pushed through `PUBLISH-PAGES.bat` and Pages is enabled.
+
+## GitHub Pages — playable Web deployment on main
+
+The public-facing browser URL, **once GitHub Pages is enabled and a Web export is pushed**, will be:
+
+`https://unborne-fetus.github.io/Rhapsody-Allegro/`
+
+GitHub Pages is prepared for **Deploy from a branch → `main` → `/docs`**. No `gh-pages` branch is necessary. The `docs/.nojekyll` marker tells GitHub Pages to serve the static export without running a Jekyll build; the `docs/index.html` launcher opens the full Godot game at `docs/play/index.html` **only when the built files actually exist**. Until then, it explicitly displays that the Web build is pending, rather than pretending to be playable.
+
+### Publish from Windows without a GitHub Actions runner
+
+1. Pull the latest `main` branch on your Windows computer. Keep the repository on `main`.
+2. Double-click **`PUBLISH-PAGES.bat`**. It runs the official local Godot 4.5.1 Web/Windows exports and all six regression suites, then stages the real Web runtime in `docs/play/`. With Git installed and configured, it commits **only** the GitHub Pages files and pushes to `origin/main`.
+3. **Once per repository:** GitHub repository **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: main → Folder: /docs → Save**. GitHub Pages can then serve the published game directly from the only development branch.
+4. Wait for GitHub Pages to publish, then visit the URL above. The launcher automatically opens the full-screen responsive Godot browser export rather than embedding it inside another iframe.
+
+To prepare the site files without a Git push, run `PUBLISH-PAGES.bat STAGE` **after** a successful build, then commit `docs/play`, `docs/index.html` and `docs/.nojekyll` with GitHub Desktop. The source Web export remains available in `build/web/`; the optional split-WASM static package is created in `dist/` if Python 3 is installed. The staging script prefers the compressed static package.
+
+**Important:** The game repository is currently **private**. GitHub Pages on a private repository requires an eligible plan (GitHub Pro or higher); GitHub Free supports Pages from **public** repositories. Do **not** make the game source public just to follow these instructions unless you intentionally want the entire repository and its history public. GitHub Pages output itself is publicly accessible even when source remains private. GitHub Actions billing is blocking the normal CI runners, so the local export-and-push route avoids those build minutes; whether GitHub accepts the Pages deployment still depends on the repository's Pages entitlement. If the Pages settings cannot be enabled for your account, the files remain prepared but the new URL is **not live**. See [GitHub's Pages publishing documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+
+**Branch cleanup:** All five feature pull requests (#1–#5) have already been merged into `main`. Their leftover branch references can be safely deleted through the repository's **Branches** page. Publishing the Web game adds no new branch.
 
 ## Gameplay
 
