@@ -181,7 +181,7 @@ func draw_controls(g: Node2D) -> void:
 	for item in controls(g):
 		var action: String = item[1]
 		var cooldown: float = g.dash_cd if action == "dodge" else (g.shoot_cd if action == "shoot" else (g.parry_cd if action == "parry" else 0))
-		var can_afford := (g.energy >= float(g.Characters.ROSTER[g.weapon_index].cost) if action == "shoot"
+		var can_afford: bool = (g.energy >= float(g.Characters.ROSTER[g.weapon_index].cost) if action == "shoot"
 			else (g.energy >= g.run.stat("dodge_cost") if action == "dodge" else true))
 		var ready: bool = cooldown<=0 and can_afford and (g.resonance>=100 if action == "burst" else true)
 		var color = g.GOLD if action == "burst" else g.TEAL
@@ -189,7 +189,7 @@ func draw_controls(g: Node2D) -> void:
 		g.draw_circle(item[0],item[3],Color(color,.85 if ready else .25),false,4,true)
 		# Recharge indicators stay in the rings instead of obscuring labels.
 		if cooldown>0 and action in ["shoot","dodge"]:
-			var total := float(g.Characters.ROSTER[g.weapon_index].cooldown) if action == "shoot" else g.run.stat("dodge_cd")
+			var total: float = float(g.Characters.ROSTER[g.weapon_index].cooldown) if action == "shoot" else float(g.run.stat("dodge_cd"))
 			var progress := 1.0-clampf(cooldown/maxf(total,0.01),0.0,1.0)
 			g.draw_arc(item[0],item[3]-7,-PI/2,-PI/2+TAU*progress,18,Color(color,0.75),3,true)
 		var label: String = item[2] if cooldown<=0 else "%.1f" % cooldown
