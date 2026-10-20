@@ -266,8 +266,14 @@ def main():
   q=bg.quantize(colors=n,method=Image.Quantize.FASTOCTREE,dither=Image.Dither.NONE)
   import numpy as np
   arr=np.array(q)
+  # Transparent index 255 requires a full 256-entry PLTE; otherwise
+  # PNG importers treat the background pixels as opaque black.
   arr[np.asarray(atlas.getchannel('A'))==0]=255
-  fin=Image.fromarray(arr,'P');fin.putpalette(q.getpalette());fin.info['transparency']=255
+  fin=Image.fromarray(arr,'P')
+  palette=q.getpalette()
+  palette += [0]*max(0,768-len(palette))
+  fin.putpalette(palette)
+  fin.info['transparency']=255
   fin.save(OUT/'bosses-pixel.png',optimize=True)
   print('Wrote assets/bosses-pixel.png:', (OUT/'bosses-pixel.png').stat().st_size, 'bytes')
  print('Pose atlas:', atlas.size, '| 12 bosses x 6 animations')
