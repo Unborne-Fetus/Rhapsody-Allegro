@@ -109,6 +109,7 @@ var dash_dir := Vector2.RIGHT
 var melee_cd := 0.0
 var melee_flash := 0.0
 var attack_animation := 0.0
+var attack_visual_duration := 0.36
 var hurt_animation := 0.0
 var combo := 0
 var combo_time := 0.0
@@ -116,6 +117,7 @@ var shoot_cd := 0.0
 var parry_time := 0.0
 var parry_cd := 0.0
 var boss_flash := 0.0
+var boss_attack_recoil := 0.0
 var attack_timer := 1.5
 var attack_number := 0
 var phase := 0
@@ -362,11 +364,11 @@ func start_fight(index: int) -> void:
 	stagger = 0; stagger_time = 0; stagger_lock = 0; style = 0; style_chain = 0
 	last_action = ""; fight_score = 0; parries = 0; perfect_dodges = 0
 	hit_stop = 0; ground_grace = 0; jump_buffer = 0; victory_accounted = false
-	dash_time = 0; dash_cd = 0; invincible = 1; melee_cd = 0; shoot_cd = 0; attack_animation = 0; hurt_animation = 0
+	dash_time = 0; dash_cd = 0; invincible = 1; melee_cd = 0; shoot_cd = 0; attack_animation = 0; attack_visual_duration = 0.36; hurt_animation = 0
 	parry_cd = 0; parry_time = 0; charge_time = 0; windup = 0; phase = 0
 	riposte_time = 0; bleed_time = 0; bleed_stacks = 0; bleed_tick = 0.5; followup_delay = 0; followup_pattern = ""
 	combo = 0; combo_time = 0; attack_number = 0; elapsed = 0; hits = 0; attack_timer = 1.8
-	shake = 0; boss_flash = 0
+	shake = 0; boss_flash = 0; boss_attack_recoil = 0.0
 	banner = "MOVEMENT %02d  /  %s" % [boss_index+1,bosses[boss_index].name]
 	banner_time = 2.6
 	screen = "playing"
@@ -450,7 +452,7 @@ func jump() -> void:
 func dodge() -> void:
 	if shift_left>0: return
 	if dash_cd>0 or energy<run.stat("dodge_cost"): return
-	melee_snapshot.clear(); melee_windup = 0
+	melee_snapshot.clear(); melee_windup = 0; attack_animation = 0.0
 	energy -= run.stat("dodge_cost")
 	dash_cd = run.stat("dodge_cd")
 	dash_rewarded = false
@@ -485,7 +487,10 @@ func melee() -> void:
 	melee_windup = float(weapon.windup[step])
 	active_melee = melee_snapshot.duplicate(true)
 	melee_flash = 0
-	attack_animation = 0.36
+	# Match visible strikes to the actual class cadence; rapid bass combos
+	# should never be frozen on an overly long windup pose.
+	attack_visual_duration = clampf(melee_cd,0.09,0.36)
+	attack_animation = attack_visual_duration
 	sound.tone(130+weapon_index*70,0.05,0.05)
 
 func shoot() -> void:
@@ -495,7 +500,8 @@ func shoot() -> void:
 	if energy<float(character.cost): return
 	energy -= float(character.cost)
 	shoot_cd = float(character.cooldown)
-	attack_animation = 0.36
+	attack_visual_duration = clampf(shoot_cd,0.14,0.36)
+	attack_animation = attack_visual_duration
 	var aim = player.direction_to(boss) if phone_mode or used_touch or gamepad or held(KEY_J) else player.direction_to(mouse_world())
 	facing = aim
 	if weapon_index != 3:
@@ -585,6 +591,7 @@ func hurt(amount: float) -> void:
 	style = maxf(0,style-40); style_chain = 0
 	invincible = 0.55
 	hurt_animation = 0.26
+	attack_animation = 0.0
 	shake = 10
 	emit_sparks(player,CORAL,18)
 	sound.tone(75,0.18,0.25)
@@ -639,7 +646,8 @@ func _process(raw_delta: float) -> void:
 			ring.r += 950.0*delta
 			ring.life -= delta
 			if ring.life<=0.0: rings.remove_at(i)
-	sound.sync_music(boss_index,phase,screen == "playing",screen == "paused",bool(profile.data.music),delta)
+	# Preserve playback position when nested menus pause a performance.
+	sound.sync_music(boss_index,phase,screen == "playing",combat_music_paused(),bool(profile.data.music),delta)
 	if phone_mode: update_phone_facing()
 	shake = maxf(0,shake-delta*45)
 	# Simulation remains at up to 60 ticks/sec. Eco mode redraws the main
@@ -651,6 +659,13 @@ func _process(raw_delta: float) -> void:
 		render_elapsed = fmod(render_elapsed,1.0/30.0)
 	queue_redraw()
 
+func combat_music_paused() -> bool:
+	if screen == "paused": return true
+	if screen not in ["settings","help","arsenal"]: return false
+	for previous in menu_history:
+		if previous in ["playing","paused"]: return true
+	return false
+
 func simulate(delta: float) -> void:
 	if shift_left>0:
 		shift_left = maxf(0,shift_left-delta)
@@ -661,7 +676,7 @@ func simulate(delta: float) -> void:
 	songs.tick(delta)
 	if profile.data.assist: fight_assisted = true; run.assisted = true
 	elapsed += delta
-	for prop in ["invincible","dash_time","dash_cd","melee_cd","melee_flash","attack_animation","hurt_animation","shoot_cd","parry_time","parry_cd","boss_flash","banner_time","combo_time"]:
+	for prop in ["invincible","dash_time","dash_cd","melee_cd","melee_flash","attack_animation","hurt_animation","shoot_cd","parry_time","parry_cd","boss_flash","boss_attack_recoil","banner_time","combo_time"]:
 		set(prop,maxf(0,float(get(prop))-delta))
 	if not melee_snapshot.is_empty():
 		melee_windup = maxf(0,melee_windup-delta)
@@ -823,6 +838,8 @@ func enemy_shot(p: Vector2,angle: float,speed: float,size: float = 7) -> void:
 	if shots.size()<350: shots.append(Shot.new(p,Vector2.RIGHT.rotated(angle)*speed,false,12,size))
 
 func execute_pattern(pattern: String) -> void:
+	# Show the authored attack pose when the warning actually releases.
+	boss_attack_recoil = 0.16
 	if songs.execute(self,pattern): return
 	var speed = 170.0 if tutorial_active else float(bosses[boss_index].speed)*(1+0.14*phase)*float(RunState.DIFFICULTIES[run.difficulty].speed)
 	var angle = boss.angle_to_point(aim_snapshot)
@@ -922,7 +939,7 @@ func _draw() -> void:
 
 func draw_menu() -> void:
 	text_at("R / A",Vector2(58,62),22,TEAL)
-	text_at("THE LIVING SCORE  /  0.8.0",Vector2(896,59),14,MUTED)
+	text_at("THE LIVING SCORE  /  0.8.4",Vector2(896,59),14,MUTED)
 	line(Vector2(58,82),Vector2(1222,82),Color("293340"))
 	if screen == "title":
 		text_at("A HYBRID-PERSPECTIVE BOSS RUSH",Vector2(94,157),16,TEAL)
@@ -937,7 +954,8 @@ func draw_menu() -> void:
 		button("SETTINGS",Rect2(96,592,188,44),"settings")
 		button("CHARACTERS",Rect2(298,592,188,44),"arsenal")
 		text_at("WASD MOVE  ·  K STRIKE  ·  J ABILITY  ·  SPACE DODGE",Vector2(96,681),14,MUTED)
-		draw_boss_figure(Vector2(920,330),0,2.4,Color("ef7854"))
+		# Fit the complete boss silhouette inside the title composition.
+		draw_boss_figure(Vector2(920,424),0,1.76,Color("ef7854"))
 		draw_arc(Vector2(920,330),185,-PI*0.85,PI*0.7,80,Color("33414e"),1.5,true)
 		draw_arc(Vector2(920,330),194,-PI*0.3,PI*0.35,30,TEAL,2,true)
 		text_at("I  /  THE METRONOME",Vector2(800,570),18,CORAL)
@@ -984,7 +1002,7 @@ func draw_menu() -> void:
 		button("BACK",Rect2(490,674,300,34),"back",true)
 	elif screen == "select":
 		centered("CHOOSE YOUR MOVEMENT",151,34)
-		centered("Nine musical encounters. Twelve bosses in a full performance.",188,17,MUTED)
+		centered("Nine song encounters plus three originals. Twelve movements in all.",188,17,MUTED)
 		var first = 0 if boss_page == 0 else 3+(boss_page-1)*4
 		var last = 3 if boss_page == 0 else mini(first+4,bosses.size())
 		for i in range(first,last):
@@ -1042,7 +1060,7 @@ func draw_menu() -> void:
 			["STRIKE / DASH STRIKE","Hold K or click left mouse. Heavy attacks wind up; dodge cancels them without refunding recovery."],
 			["FOUR MUSICIANS","Choose drummer, bassist, guitarist or singer. The singer uses sound projectiles."],
 			["RESONANCE BREAK","Attacks and perfect dodges earn resonance. E spends 100 on a damaging break."],
-			["STAGGER / STYLE","Mix blade hits, abilities and ranged fire. Fill stagger to open a +30% damage window."],
+			["STAGGER / STYLE","Mix instrument strikes, abilities and vocal projectiles. Fill stagger to open a +30% damage window."],
 			["FORM SHIFTS","Boss health thresholds change perspective. W jumps in side view; S drops through platforms."],
 			["CONTROLLER / TOUCH","Pad: X strike, RT ability, A dodge, Y burst, B inspect, D-pad up jump. Touch has labeled buttons."]
 		]
@@ -1223,7 +1241,7 @@ func draw_overlay() -> void:
 			text_at("ENCOUNTER NOTES",Vector2(890,349),14,GOLD)
 			var y = wrapped_text(encounter.song+" · "+encounter.artist,Vector2(890,378),290,16)
 			y = wrapped_text(encounter.mechanic,Vector2(890,y+14),290,14,TEAL)
-			wrapped_text(encounter.tip+" Gold warnings are safe. Dodge through incoming attacks.",Vector2(890,y+12),290,14,MUTED)
+			wrapped_text(encounter.tip+" Gold marks warn of upcoming danger. Move before they activate or dodge through the attack.",Vector2(890,y+12),290,14,MUTED)
 		if training:
 			button("ATTACKS "+("ON" if training_attacks else "OFF"),Rect2(90,390,285,48),"training_attacks")
 			button("SWITCH PERSPECTIVE",Rect2(90,454,285,48),"training_view")
@@ -1519,7 +1537,7 @@ func setup_tutorial_stage() -> void:
 	shift_left = 0
 	shots.clear(); hazards.clear(); melee_snapshot.clear(); active_melee.clear()
 	melee_windup = 0; melee_flash = 0; melee_cd = 0; shoot_cd = 0
-	bleed_time = 0; bleed_stacks = 0; bleed_tick = 0.5; charge_time = 0; windup = 0
+	bleed_time = 0; bleed_stacks = 0; bleed_tick = 0.5; charge_time = 0; windup = 0; boss_attack_recoil = 0
 	followup_delay = 0; followup_pattern = ""; attack_timer = 1.8
 	hp = run.stat("health"); energy = 25.0 if tutorial.step == 4 else run.stat("energy"); invincible = 1.0
 	resonance = 100 if tutorial.step == 5 else 0
